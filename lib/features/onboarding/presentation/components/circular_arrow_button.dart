@@ -38,10 +38,9 @@ class _CircularArrowButtonState extends State<CircularArrowButton> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) async {
+      onTapUp: (_) {
         setState(() => _isPressed = false);
         AppHaptics.light();
-        await Future<void>.delayed(const Duration(milliseconds: 140));
         widget.onTap();
       },
       onTapCancel: () => setState(() => _isPressed = false),

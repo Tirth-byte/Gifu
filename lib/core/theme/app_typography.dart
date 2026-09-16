@@ -19,6 +19,21 @@ class AppTypography {
   /// Activated with assets/fonts/Gambarino-Regular.ttf.
   static const String gambarinoFontFamily = 'Gambarino';
 
+  /// General Inter sans-serif style helper
+  static TextStyle inter({
+    double fontSize = 14,
+    FontWeight fontWeight = FontWeight.w400,
+    double? height,
+    double? letterSpacing,
+    Color? color,
+  }) => GoogleFonts.inter(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    height: height,
+    letterSpacing: letterSpacing,
+    color: color,
+  );
+
   static TextStyle _displayStyle({
     required double fontSize,
     FontWeight fontWeight = FontWeight.w400,

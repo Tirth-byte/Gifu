@@ -114,9 +114,15 @@ class _OnboardingPageState extends State<OnboardingPage>
     super.dispose();
   }
 
+  bool _isNavigating = false;
+
   void _onCtaPressed() {
+    if (_isNavigating) return;
+    _isNavigating = true;
     AppHaptics.light();
-    context.push('/screen-2');
+    context.push('/screen-2').then((_) {
+      if (mounted) _isNavigating = false;
+    });
   }
 
   @override
@@ -206,48 +212,48 @@ class _OnboardingPageState extends State<OnboardingPage>
 
                               // 1. Enormous Hero Card (Dominates upper 45%)
                               Center(
-                                child: AnimatedBuilder(
-                                  animation: _animController,
-                                  builder: (context, child) {
-                                    return Opacity(
-                                      opacity: _cardFade.value,
-                                      child: Transform.translate(
-                                        offset: Offset(0, _cardSlide.value),
-                                        child: child,
+                                child: FadeTransition(
+                                  opacity: _cardFade,
+                                  child: AnimatedBuilder(
+                                    animation: _animController,
+                                    builder: (context, child) =>
+                                        Transform.translate(
+                                          offset: Offset(0, _cardSlide.value),
+                                          child: child,
+                                        ),
+                                    child: Container(
+                                      width: cardWidth,
+                                      height: cardHeight,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(
+                                          36.0,
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x0A273869),
+                                            blurRadius: 45,
+                                            spreadRadius: -2,
+                                            offset: Offset(0, 16),
+                                          ),
+                                          BoxShadow(
+                                            color: Color(0x05273869),
+                                            blurRadius: 15,
+                                            offset: Offset(0, 5),
+                                          ),
+                                        ],
                                       ),
-                                    );
-                                  },
-                                  child: Container(
-                                    width: cardWidth,
-                                    height: cardHeight,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(36.0),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                          color: Color(0x0A273869),
-                                          blurRadius: 45,
-                                          spreadRadius: -2,
-                                          offset: Offset(0, 16),
-                                        ),
-                                        BoxShadow(
-                                          color: Color(0x05273869),
-                                          blurRadius: 15,
-                                          offset: Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: AnimatedBuilder(
-                                        animation: _animController,
-                                        builder: (context, child) {
-                                          return Transform.scale(
-                                            scale: _symbolScale.value,
-                                            child: child,
-                                          );
-                                        },
-                                        child: BlinkingGufiHeroArtwork(
-                                          size: artworkSize,
+                                      child: Center(
+                                        child: AnimatedBuilder(
+                                          animation: _animController,
+                                          builder: (context, child) =>
+                                              Transform.scale(
+                                                scale: _symbolScale.value,
+                                                child: child,
+                                              ),
+                                          child: BlinkingGufiHeroArtwork(
+                                            size: artworkSize,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -258,14 +264,8 @@ class _OnboardingPageState extends State<OnboardingPage>
                               SizedBox(height: heroToPaginationGap),
 
                               // 2. Visual Pagination Design Element (Reference Aesthetic)
-                              AnimatedBuilder(
-                                animation: _animController,
-                                builder: (context, child) {
-                                  return Opacity(
-                                    opacity: _paginationFade.value,
-                                    child: child,
-                                  );
-                                },
+                              FadeTransition(
+                                opacity: _paginationFade,
                                 child: Center(
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -321,27 +321,29 @@ class _OnboardingPageState extends State<OnboardingPage>
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: textMargin,
                                 ),
-                                child: AnimatedBuilder(
-                                  animation: _animController,
-                                  builder: (context, child) {
-                                    return Opacity(
-                                      opacity: _headlineFade.value,
-                                      child: Transform.translate(
-                                        offset: Offset(0, _headlineSlide.value),
-                                        child: child,
+                                child: FadeTransition(
+                                  opacity: _headlineFade,
+                                  child: AnimatedBuilder(
+                                    animation: _animController,
+                                    builder: (context, child) =>
+                                        Transform.translate(
+                                          offset: Offset(
+                                            0,
+                                            _headlineSlide.value,
+                                          ),
+                                          child: child,
+                                        ),
+                                    child: Text(
+                                      'Commit.\nShow up.\nGrow together.',
+                                      style: TextStyle(
+                                        fontFamily:
+                                            AppTypography.gambarinoFontFamily,
+                                        fontSize: headlineFontSize,
+                                        fontWeight: FontWeight.w400,
+                                        height: 1.01,
+                                        letterSpacing: -0.6,
+                                        color: AppColors.navy900,
                                       ),
-                                    );
-                                  },
-                                  child: Text(
-                                    'Commit.\nShow up.\nGrow together.',
-                                    style: TextStyle(
-                                      fontFamily:
-                                          AppTypography.gambarinoFontFamily,
-                                      fontSize: headlineFontSize,
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.01,
-                                      letterSpacing: -0.6,
-                                      color: AppColors.navy900,
                                     ),
                                   ),
                                 ),
@@ -354,14 +356,8 @@ class _OnboardingPageState extends State<OnboardingPage>
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: textMargin,
                                 ),
-                                child: AnimatedBuilder(
-                                  animation: _animController,
-                                  builder: (context, child) {
-                                    return Opacity(
-                                      opacity: _supportFade.value,
-                                      child: child,
-                                    );
-                                  },
+                                child: FadeTransition(
+                                  opacity: _supportFade,
                                   child: Text(
                                     'Make it visible. Follow through.',
                                     maxLines: 1,
@@ -392,14 +388,8 @@ class _OnboardingPageState extends State<OnboardingPage>
                         left: textMargin,
                         right: cardHorizontalMargin,
                         bottom: isCompact ? 56.0 : 110.0,
-                        child: AnimatedBuilder(
-                          animation: _animController,
-                          builder: (context, child) {
-                            return Opacity(
-                              opacity: _bottomRowFade.value,
-                              child: child,
-                            );
-                          },
+                        child: FadeTransition(
+                          opacity: _bottomRowFade,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -485,6 +475,8 @@ class _BlinkingGufiHeroArtworkState extends State<BlinkingGufiHeroArtwork>
   late final AnimationController _blinkController;
   late final Animation<double> _blinkAnimation;
   Timer? _blinkTimer;
+  Timer? _doubleBlinkTimer;
+  Completer<void>? _doubleBlinkCompleter;
   final Random _random = Random();
   bool _disposed = false;
 
@@ -519,11 +511,15 @@ class _BlinkingGufiHeroArtworkState extends State<BlinkingGufiHeroArtwork>
   Future<void> _runBlinkCycle() async {
     if (!mounted || _disposed) return;
 
+    final isVisible = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!isVisible) {
+      return;
+    }
+
     // Respect Reduce Motion accessibility settings
     final disableAnimations =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (disableAnimations) {
-      _scheduleNextBlink();
       return;
     }
 
@@ -536,7 +532,14 @@ class _BlinkingGufiHeroArtworkState extends State<BlinkingGufiHeroArtwork>
       // 2. Occasional natural double blink (~22% probability)
       final isDoubleBlink = _random.nextDouble() < 0.22;
       if (isDoubleBlink) {
-        await Future.delayed(const Duration(milliseconds: 140));
+        final completer = Completer<void>();
+        _doubleBlinkCompleter = completer;
+        _doubleBlinkTimer = Timer(const Duration(milliseconds: 140), () {
+          if (!completer.isCompleted) completer.complete();
+        });
+        await completer.future;
+        _doubleBlinkCompleter = null;
+        _doubleBlinkTimer = null;
         if (!mounted || _disposed) return;
         await _blinkController.forward(from: 0.0);
         if (!mounted || _disposed) return;
@@ -552,6 +555,10 @@ class _BlinkingGufiHeroArtworkState extends State<BlinkingGufiHeroArtwork>
   void dispose() {
     _disposed = true;
     _blinkTimer?.cancel();
+    _doubleBlinkTimer?.cancel();
+    if (_doubleBlinkCompleter != null && !_doubleBlinkCompleter!.isCompleted) {
+      _doubleBlinkCompleter!.complete();
+    }
     _blinkController.dispose();
     super.dispose();
   }
@@ -569,7 +576,9 @@ class _BlinkingGufiHeroArtworkState extends State<BlinkingGufiHeroArtwork>
             Image.asset(
               'assets/images/gufi_hero_eye.png',
               fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
+              filterQuality: FilterQuality.medium,
+              cacheWidth: (widget.size * 3).round(),
+              cacheHeight: (widget.size * 3).round(),
             ),
 
             // 2. Isolated animated eyelid overlay (only active during smooth blinks)
@@ -620,6 +629,16 @@ class _EyelidPainter extends CustomPainter {
   static const Color navyColor = Color(0xFF1F2F61);
   static const Color creaseColor = Color(0xFF121C3E);
 
+  static final Paint _navyPaint = Paint()
+    ..color = navyColor
+    ..style = PaintingStyle.fill
+    ..isAntiAlias = true;
+
+  static final Paint _creasePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round
+    ..isAntiAlias = true;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (progress <= 0.001) return;
@@ -635,11 +654,6 @@ class _EyelidPainter extends CustomPainter {
     final topCtrlY = (216.0 + progress * 116.0) * scale;
     final botCtrlY = (448.0 - progress * 116.0) * scale;
 
-    final navyPaint = Paint()
-      ..color = navyColor
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
     // 1. Upper Eyelid: covers from fixed top socket curve down to moving lid curve
     final upperPath = Path()
       ..moveTo(pLeft.dx, pLeft.dy)
@@ -654,24 +668,21 @@ class _EyelidPainter extends CustomPainter {
       ..quadraticBezierTo(389.5 * scale, botCtrlY, pRight.dx, pRight.dy)
       ..close();
 
-    canvas.drawPath(upperPath, navyPaint);
-    canvas.drawPath(lowerPath, navyPaint);
+    canvas.drawPath(upperPath, _navyPaint);
+    canvas.drawPath(lowerPath, _navyPaint);
 
     // 3. Subtle organic crease line when closed (>90%)
     if (progress >= 0.90) {
       final creaseAlpha = ((progress - 0.90) / 0.10).clamp(0.0, 1.0);
-      final creasePaint = Paint()
+      _creasePaint
         ..color = creaseColor.withValues(alpha: creaseAlpha * 0.90)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6 * scale
-        ..strokeCap = StrokeCap.round
-        ..isAntiAlias = true;
+        ..strokeWidth = 1.6 * scale;
 
       final creasePath = Path()
         ..moveTo(pLeft.dx, pLeft.dy)
         ..quadraticBezierTo(389.5 * scale, 333.0 * scale, pRight.dx, pRight.dy);
 
-      canvas.drawPath(creasePath, creasePaint);
+      canvas.drawPath(creasePath, _creasePaint);
     }
   }
 

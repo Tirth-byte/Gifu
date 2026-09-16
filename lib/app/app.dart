@@ -9,6 +9,8 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    precacheImage(const AssetImage('assets/images/gufi_hero_eye.png'), context);
+
     return MaterialApp.router(
       title: 'Gufi',
       debugShowCheckedModeBanner: false,

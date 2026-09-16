@@ -137,8 +137,15 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
     }
   }
 
+  bool _isNavigating = false;
+
   void _onContinuePressed() {
+    if (_isNavigating) return;
+    _isNavigating = true;
     AppHaptics.medium();
+    context.push('/auth').then((_) {
+      if (mounted) _isNavigating = false;
+    });
   }
 
   @override
@@ -209,23 +216,14 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
 
                         // 1. LARGE CONFIDENT MOMENTUM GAUGE
                         Center(
-                          child: AnimatedBuilder(
-                            animation: Listenable.merge([
-                              _entranceController,
-                              _momentumController,
-                            ]),
-                            builder: (context, child) {
-                              return Opacity(
-                                opacity: _heroFade.value,
-                                child: Transform.scale(
-                                  scale: _heroScale.value,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: GufiMomentumMeter(
-                              radius: gaugeRadius,
-                              animationProgress: _momentumCurve,
+                          child: FadeTransition(
+                            opacity: _heroFade,
+                            child: ScaleTransition(
+                              scale: _heroScale,
+                              child: GufiMomentumMeter(
+                                radius: gaugeRadius,
+                                animationProgress: _momentumCurve,
+                              ),
                             ),
                           ),
                         ),
@@ -233,28 +231,26 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
                         SizedBox(height: gaugeToHeadlineGap),
 
                         // 2. HEADLINE: TWO LINES ONLY IN GAMBARINO
-                        AnimatedBuilder(
-                          animation: _entranceController,
-                          builder: (context, child) {
-                            return Opacity(
-                              opacity: _headlineFade.value,
-                              child: Transform.translate(
-                                offset: Offset(0, _headlineSlide.value),
-                                child: child,
+                        FadeTransition(
+                          opacity: _headlineFade,
+                          child: AnimatedBuilder(
+                            animation: _entranceController,
+                            builder: (context, child) => Transform.translate(
+                              offset: Offset(0, _headlineSlide.value),
+                              child: child,
+                            ),
+                            child: Text(
+                              'Small steps.\nReal momentum.',
+                              maxLines: 2,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontFamily: AppTypography.gambarinoFontFamily,
+                                fontSize: headlineFontSize,
+                                fontWeight: FontWeight.w400,
+                                height: 0.98,
+                                letterSpacing: -0.8,
+                                color: deepContrast,
                               ),
-                            );
-                          },
-                          child: Text(
-                            'Small steps.\nReal momentum.',
-                            maxLines: 2,
-                            softWrap: false,
-                            style: TextStyle(
-                              fontFamily: AppTypography.gambarinoFontFamily,
-                              fontSize: headlineFontSize,
-                              fontWeight: FontWeight.w400,
-                              height: 0.98,
-                              letterSpacing: -0.8,
-                              color: deepContrast,
                             ),
                           ),
                         ),
@@ -262,14 +258,8 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
                         SizedBox(height: headlineToSupportGap),
 
                         // 3. SUPPORTING TEXT: DELIBERATE TWO-LINE LAYOUT WITHOUT HYPHENATION
-                        AnimatedBuilder(
-                          animation: _entranceController,
-                          builder: (context, child) {
-                            return Opacity(
-                              opacity: _supportFade.value,
-                              child: child,
-                            );
-                          },
+                        FadeTransition(
+                          opacity: _supportFade,
                           child: Text(
                             'Turn daily intentions into\nconsistent follow-through.',
                             style: GoogleFonts.inter(
@@ -285,14 +275,8 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
                         SizedBox(height: supportToJourneyGap),
 
                         // 4. ENLARGED MOMENTUM PIPELINE TRACKER (Show up / Repeat / Grow)
-                        AnimatedBuilder(
-                          animation: _entranceController,
-                          builder: (context, child) {
-                            return Opacity(
-                              opacity: _supportFade.value,
-                              child: child,
-                            );
-                          },
+                        FadeTransition(
+                          opacity: _supportFade,
                           child: _MomentumPipelineTracker(
                             animationProgress: _momentumCurve,
                             screenWidth: screenWidth,
@@ -406,61 +390,63 @@ class GufiMomentumMeter extends StatelessWidget {
     final gaugeWidth = rOut * 2 + 16.0;
     final gaugeHeight = rOut + 10.0;
 
-    return AnimatedBuilder(
-      animation: animationProgress,
-      builder: (context, _) {
-        final t = animationProgress.value;
-        final currentPercent = (t * 87.0).round().clamp(0, 87);
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: animationProgress,
+        builder: (context, _) {
+          final t = animationProgress.value;
+          final currentPercent = (t * 87.0).round().clamp(0, 87);
 
-        return SizedBox(
-          width: gaugeWidth,
-          height: gaugeHeight,
-          child: Stack(
-            alignment: Alignment.topCenter,
-            children: [
-              // 1. Semicircular Segmented Gauge
-              CustomPaint(
-                size: Size(gaugeWidth, gaugeHeight),
-                painter: _MomentumGaugePainter(
-                  progress: t,
-                  rOut: rOut,
-                  rIn: rIn,
+          return SizedBox(
+            width: gaugeWidth,
+            height: gaugeHeight,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                // 1. Semicircular Segmented Gauge
+                CustomPaint(
+                  size: Size(gaugeWidth, gaugeHeight),
+                  painter: _MomentumGaugePainter(
+                    progress: t,
+                    rOut: rOut,
+                    rIn: rIn,
+                  ),
                 ),
-              ),
 
-              // 2. Clean Center Content: ONLY 87% + Momentum
-              Positioned(
-                top: (rOut - rIn) + (rIn * 0.28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$currentPercent%',
-                      style: GoogleFonts.inter(
-                        fontSize: (rOut * 0.34).clamp(50.0, 56.0),
-                        fontWeight: FontWeight.w600,
-                        color: deepContrast,
-                        letterSpacing: -1.6,
-                        height: 1.0,
+                // 2. Clean Center Content: ONLY 87% + Momentum
+                Positioned(
+                  top: (rOut - rIn) + (rIn * 0.28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$currentPercent%',
+                        style: GoogleFonts.inter(
+                          fontSize: (rOut * 0.34).clamp(50.0, 56.0),
+                          fontWeight: FontWeight.w600,
+                          color: deepContrast,
+                          letterSpacing: -1.6,
+                          height: 1.0,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6.0),
-                    Text(
-                      'Momentum',
-                      style: GoogleFonts.inter(
-                        fontSize: 15.0,
-                        fontWeight: FontWeight.w400,
-                        color: primaryBlue.withValues(alpha: 0.75),
-                        letterSpacing: -0.15,
+                      const SizedBox(height: 6.0),
+                      Text(
+                        'Momentum',
+                        style: GoogleFonts.inter(
+                          fontSize: 15.0,
+                          fontWeight: FontWeight.w400,
+                          color: primaryBlue.withValues(alpha: 0.75),
+                          letterSpacing: -0.15,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -477,6 +463,16 @@ class _MomentumGaugePainter extends CustomPainter {
     required this.rOut,
     required this.rIn,
   });
+
+  // Reusable Paint objects to eliminate thousands of per-frame allocations at 120Hz
+  static final Paint _fillPaint = Paint()
+    ..style = PaintingStyle.fill
+    ..isAntiAlias = true;
+  static final Paint _shadowPaint = Paint()
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
+
+  // Static cache for computed segment paths
+  static final Map<String, List<Path>> _cachedPaths = {};
 
   // Refreshed Screen 2 palette progression across active segments
   static const List<Color> _activePalette = [
@@ -502,27 +498,39 @@ class _MomentumGaugePainter extends CustomPainter {
   static const double _segmentDegrees =
       (_totalSpanDegrees - (_totalSegments - 1) * _gapDegrees) / _totalSegments;
 
+  List<Path> _getPaths(Offset center, double rIn, double rOut) {
+    final key =
+        '${center.dx.toStringAsFixed(1)}_${center.dy.toStringAsFixed(1)}_${rIn.toStringAsFixed(1)}_${rOut.toStringAsFixed(1)}';
+    return _cachedPaths.putIfAbsent(key, () {
+      const cornerRadius = 4.6;
+      final paths = <Path>[];
+      for (int i = 0; i < _totalSegments; i++) {
+        final startDeg = 180.0 + i * (_segmentDegrees + _gapDegrees);
+        final endDeg = startDeg + _segmentDegrees;
+        final startAngle = startDeg * (math.pi / 180.0);
+        final endAngle = endDeg * (math.pi / 180.0);
+        paths.add(
+          _buildRoundedSegmentPath(
+            center: center,
+            rIn: rIn,
+            rOut: rOut,
+            startAngle: startAngle,
+            endAngle: endAngle,
+            cornerRadius: cornerRadius,
+          ),
+        );
+      }
+      return paths;
+    });
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2.0, rOut + 6.0);
-    const cornerRadius = 4.6;
+    final segmentPaths = _getPaths(center, rIn, rOut);
 
     for (int i = 0; i < _totalSegments; i++) {
-      final startDeg = 180.0 + i * (_segmentDegrees + _gapDegrees);
-      final endDeg = startDeg + _segmentDegrees;
-
-      final startAngle = startDeg * (math.pi / 180.0);
-      final endAngle = endDeg * (math.pi / 180.0);
-
-      final segmentPath = _buildRoundedSegmentPath(
-        center: center,
-        rIn: rIn,
-        rOut: rOut,
-        startAngle: startAngle,
-        endAngle: endAngle,
-        cornerRadius: cornerRadius,
-      );
-
+      final segmentPath = segmentPaths[i];
       Color segmentColor;
       double activeIntensity = 0.0;
 
@@ -544,19 +552,15 @@ class _MomentumGaugePainter extends CustomPainter {
 
       // Restrained soft ambient shadow on active segments
       if (activeIntensity > 0.08) {
-        final shadowPaint = Paint()
-          ..color = _activePalette[i].withValues(alpha: 0.16 * activeIntensity)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.0);
-        canvas.drawPath(segmentPath, shadowPaint);
+        _shadowPaint.color = _activePalette[i].withValues(
+          alpha: 0.16 * activeIntensity,
+        );
+        canvas.drawPath(segmentPath, _shadowPaint);
       }
 
       // Fill segment
-      final fillPaint = Paint()
-        ..color = segmentColor
-        ..style = PaintingStyle.fill
-        ..isAntiAlias = true;
-
-      canvas.drawPath(segmentPath, fillPaint);
+      _fillPaint.color = segmentColor;
+      canvas.drawPath(segmentPath, _fillPaint);
     }
   }
 
@@ -694,144 +698,146 @@ class _MomentumPipelineTracker extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxJourneyWidth = (screenWidth * 0.86).clamp(310.0, 360.0);
 
-    return AnimatedBuilder(
-      animation: animationProgress,
-      builder: (context, _) {
-        final t = animationProgress.value;
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: animationProgress,
+        builder: (context, _) {
+          final t = animationProgress.value;
 
-        // Choreography:
-        // 0–30%: SHOW UP node fills #5880DA
-        final s1 = (t / 0.30).clamp(0.0, 1.0);
-        // 30–60%: first connector animates
-        final c1 = ((t - 0.30) / 0.30).clamp(0.0, 1.0);
-        // 60–80%: REPEAT fills
-        final s2 = ((t - 0.60) / 0.20).clamp(0.0, 1.0);
-        // 80–87%: final connector grows toward GROW
-        final c2 = ((t - 0.75) / 0.12).clamp(0.0, 1.0);
-        // 87%: GROW fills in #C9F17E and scale-pulses
-        final s3 = ((t - 0.82) / 0.15).clamp(0.0, 1.0);
-        final growScale = (t >= 0.87)
-            ? (1.0 +
-                  0.06 *
-                      math.sin(((t - 0.87) / 0.13).clamp(0.0, 1.0) * math.pi))
-            : 1.0;
+          // Choreography:
+          // 0–30%: SHOW UP node fills #5880DA
+          final s1 = (t / 0.30).clamp(0.0, 1.0);
+          // 30–60%: first connector animates
+          final c1 = ((t - 0.30) / 0.30).clamp(0.0, 1.0);
+          // 60–80%: REPEAT fills
+          final s2 = ((t - 0.60) / 0.20).clamp(0.0, 1.0);
+          // 80–87%: final connector grows toward GROW
+          final c2 = ((t - 0.75) / 0.12).clamp(0.0, 1.0);
+          // 87%: GROW fills in #C9F17E and scale-pulses
+          final s3 = ((t - 0.82) / 0.15).clamp(0.0, 1.0);
+          final growScale = (t >= 0.87)
+              ? (1.0 +
+                    0.06 *
+                        math.sin(((t - 0.87) / 0.13).clamp(0.0, 1.0) * math.pi))
+              : 1.0;
 
-        return Center(
-          child: SizedBox(
-            width: maxJourneyWidth,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              children: [
-                // Connecting line between circle centers (Y = 28.0)
-                Positioned(
-                  top: 27.0,
-                  left: 32.0,
-                  right: 32.0,
-                  child: SizedBox(
-                    height: 2.5,
-                    child: Row(
-                      children: [
-                        // Segment 1 (Show up -> Repeat)
-                        Expanded(
-                          child: Container(
-                            height: 2.5,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(1.5),
-                              color: softBlue.withValues(alpha: 0.32),
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: FractionallySizedBox(
-                                widthFactor: c1,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(1.5),
-                                    gradient: LinearGradient(
-                                      colors: [primaryBlue, repeatBlue],
+          return Center(
+            child: SizedBox(
+              width: maxJourneyWidth,
+              child: Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  // Connecting line between circle centers (Y = 28.0)
+                  Positioned(
+                    top: 27.0,
+                    left: 32.0,
+                    right: 32.0,
+                    child: SizedBox(
+                      height: 2.5,
+                      child: Row(
+                        children: [
+                          // Segment 1 (Show up -> Repeat)
+                          Expanded(
+                            child: Container(
+                              height: 2.5,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(1.5),
+                                color: softBlue.withValues(alpha: 0.32),
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: FractionallySizedBox(
+                                  widthFactor: c1,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(1.5),
+                                      gradient: LinearGradient(
+                                        colors: [primaryBlue, repeatBlue],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
 
-                        // Segment 2 (Repeat -> Grow)
-                        Expanded(
-                          child: Container(
-                            height: 2.5,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(1.5),
-                              color: softBlue.withValues(alpha: 0.32),
-                            ),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: FractionallySizedBox(
-                                widthFactor: c2,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(1.5),
-                                    gradient: LinearGradient(
-                                      colors: [repeatBlue, limeAccent],
+                          // Segment 2 (Repeat -> Grow)
+                          Expanded(
+                            child: Container(
+                              height: 2.5,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(1.5),
+                                color: softBlue.withValues(alpha: 0.32),
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: FractionallySizedBox(
+                                  widthFactor: c2,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(1.5),
+                                      gradient: LinearGradient(
+                                        colors: [repeatBlue, limeAccent],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // 3 Prominent Step Nodes
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // 1. Show up (54px)
-                    _buildStepNode(
-                      icon: Icons.check_rounded,
-                      label: 'Show up',
-                      nodeSize: 54.0,
-                      iconSize: 25.0,
-                      activeBg: primaryBlue,
-                      activeIconColor: Colors.white,
-                      reveal: s1,
-                    ),
-
-                    // 2. Repeat (54px)
-                    _buildStepNode(
-                      icon: Icons.check_rounded,
-                      label: 'Repeat',
-                      nodeSize: 54.0,
-                      iconSize: 25.0,
-                      activeBg: repeatBlue,
-                      activeIconColor: Colors.white,
-                      reveal: s2,
-                    ),
-
-                    // 3. Grow (60px in LIME!)
-                    Transform.scale(
-                      scale: growScale,
-                      child: _buildStepNode(
-                        icon: Icons.arrow_upward_rounded,
-                        label: 'Grow',
-                        nodeSize: 60.0,
-                        iconSize: 27.0,
-                        activeBg: limeAccent,
-                        activeIconColor: deepText,
-                        reveal: s3,
-                        isLimeGlow: true,
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+
+                  // 3 Prominent Step Nodes
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 1. Show up (54px)
+                      _buildStepNode(
+                        icon: Icons.check_rounded,
+                        label: 'Show up',
+                        nodeSize: 54.0,
+                        iconSize: 25.0,
+                        activeBg: primaryBlue,
+                        activeIconColor: Colors.white,
+                        reveal: s1,
+                      ),
+
+                      // 2. Repeat (54px)
+                      _buildStepNode(
+                        icon: Icons.check_rounded,
+                        label: 'Repeat',
+                        nodeSize: 54.0,
+                        iconSize: 25.0,
+                        activeBg: repeatBlue,
+                        activeIconColor: Colors.white,
+                        reveal: s2,
+                      ),
+
+                      // 3. Grow (60px in LIME!)
+                      Transform.scale(
+                        scale: growScale,
+                        child: _buildStepNode(
+                          icon: Icons.arrow_upward_rounded,
+                          label: 'Grow',
+                          nodeSize: 60.0,
+                          iconSize: 27.0,
+                          activeBg: limeAccent,
+                          activeIconColor: deepText,
+                          reveal: s3,
+                          isLimeGlow: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -983,9 +989,9 @@ class _RefinedContinueButtonState extends State<_RefinedContinueButton>
     super.dispose();
   }
 
-  Future<void> _handleTap() async {
+  void _handleTap() {
     AppHaptics.medium();
-    await _pressController.forward(from: 0.0);
+    _pressController.forward(from: 0.0);
     widget.onTap();
   }
 
