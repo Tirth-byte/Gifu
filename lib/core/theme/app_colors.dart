@@ -17,12 +17,12 @@ class AppColors {
   static const Color navy800 = Color(0xFF405881);
   static const Color gray50 = Color(0xFFEDF1F4);
 
-  // Canvas & Backgrounds
-  static const Color background = gray50;
-  static const Color canvasTop = gray50;
-  static const Color canvasMid = gray50;
-  static const Color canvasBottom = Color(0xFFE4E9EE);
-  static const Color backgroundSecondary = Color(0xFFE5EBEF);
+  // Canvas & Backgrounds (Standardized to Clean White)
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color canvasTop = Color(0xFFFFFFFF);
+  static const Color canvasMid = Color(0xFFFFFFFF);
+  static const Color canvasBottom = Color(0xFFFFFFFF);
+  static const Color backgroundSecondary = Color(0xFFFFFFFF);
 
   // Surfaces (Soft, clean white & neutral tint)
   static const Color surface = Color(0xFFFFFFFF);

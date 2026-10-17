@@ -6,7 +6,10 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../../core/haptics/app_haptics.dart';
 import '../../../../core/theme/app_typography.dart';
 
-const Color _bg = Color(0xFFF7F9F5);
+import '../../domain/models/user_profile.dart';
+import '../../domain/repositories/auth_repository.dart';
+
+const Color _bg = Color(0xFFFFFFFF);
 const Color _navy = Color(0xFF1E3365);
 const Color _blue = Color(0xFF5880DA);
 const Color _muted = Color(0xFF77839A);
@@ -16,16 +19,18 @@ const Color _border = Color(0xFFBCDBFA);
 class EmailVerificationScreen extends StatefulWidget {
   final String email;
   final Future<void> Function() onResend;
-  final Future<bool> Function() onCheckVerified;
-  final VoidCallback onVerified;
+  final Future<VerificationCheckResult> Function() onCheckVerification;
+  final void Function(UserProfile? profile) onSessionConfirmed;
+  final VoidCallback onNeedsSignIn;
   final VoidCallback onChangeEmail;
 
   const EmailVerificationScreen({
     super.key,
     required this.email,
     required this.onResend,
-    required this.onCheckVerified,
-    required this.onVerified,
+    required this.onCheckVerification,
+    required this.onSessionConfirmed,
+    required this.onNeedsSignIn,
     required this.onChangeEmail,
   });
 
@@ -39,6 +44,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Timer? _timer;
   bool _checking = false;
   String? _message;
+  bool _needsSignIn = false;
 
   @override
   void dispose() {
@@ -80,21 +86,42 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   Future<void> _handleCheck() async {
     if (_checking) return;
+    if (_needsSignIn) {
+      widget.onNeedsSignIn();
+      return;
+    }
     setState(() {
       _checking = true;
       _message = null;
     });
     AppHaptics.selection();
     try {
-      final isVerified = await widget.onCheckVerified();
+      final result = await widget.onCheckVerification();
       if (!mounted) return;
-      if (isVerified) {
-        widget.onVerified();
-      } else {
-        setState(() {
-          _message =
-              'Email not yet verified. Please click the link in your email.';
-        });
+      switch (result.status) {
+        case VerificationCheckStatus.confirmedWithSession:
+          widget.onSessionConfirmed(result.profile);
+          break;
+        case VerificationCheckStatus.needsSignIn:
+          setState(() {
+            _message = 'Email verified. Sign in to continue.';
+            _needsSignIn = true;
+          });
+          // After brief transition, automatically route user to Login with email prefilled
+          Future.delayed(const Duration(milliseconds: 700), () {
+            if (mounted) {
+              widget.onNeedsSignIn();
+            }
+          });
+          break;
+        case VerificationCheckStatus.unconfirmed:
+          setState(() {
+            _message =
+                result.message ??
+                'Email not yet verified. Please click the link in your email.';
+            _needsSignIn = false;
+          });
+          break;
       }
     } catch (_) {
       if (mounted) {
@@ -174,7 +201,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
               const Spacer(),
 
-              // Primary Action: I've verified my email
+              // Primary Action: I've verified my email / Sign in to continue
               ElevatedButton(
                 onPressed: _checking ? null : _handleCheck,
                 style: ElevatedButton.styleFrom(
@@ -198,7 +225,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         ),
                       )
                     : Text(
-                        "I've verified my email",
+                        _needsSignIn
+                            ? 'Sign in to continue'
+                            : "I've verified my email",
                         style: AppTypography.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -218,6 +247,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: _resendCooldown > 0 ? _muted : _navy,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+
+              // Sign in shortcut if already verified externally
+              TextButton(
+                onPressed: widget.onNeedsSignIn,
+                child: Text(
+                  'Already verified? Sign in',
+                  style: AppTypography.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: _blue,
                   ),
                 ),
               ),

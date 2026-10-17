@@ -10,14 +10,17 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../../../core/haptics/app_haptics.dart';
+import '../../../core/services/app_preferences_service.dart';
 import '../../../core/services/disposable_email_service.dart';
 import '../../../core/theme/app_typography.dart';
 import '../domain/models/user_profile.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../data/repositories/supabase_auth_repository.dart';
+import '../../circles/data/repositories/supabase_circle_repository.dart';
+import '../../circles/domain/models/circle.dart';
 import 'screens/email_verification_screen.dart';
 
-const bg = Color(0xFFF7F9F5);
+const bg = Color(0xFFFFFFFF);
 const navy = Color(0xFF1E3365);
 const blue = Color(0xFF5880DA);
 const muted = Color(0xFF77839A);
@@ -28,13 +31,16 @@ const errorRed = Color(0xFFB54848);
 enum AuthProvider { apple, google }
 
 abstract class AuthGateway {
+  UserProfile? get currentUserProfile;
+  Stream<UserProfile?> get authStateChanges;
   Future<bool> emailExists(String email);
   Future<bool> usernameAvailable(String username);
   Future<bool> continueWithProvider(AuthProvider provider);
   Future<void> signUp(String email, String password);
   Future<void> resendVerification(String email);
   Future<bool> checkEmailVerified();
-  Future<void> createAccount(
+  Future<VerificationCheckResult> checkEmailVerificationStatus();
+  Future<UserProfile> createAccount(
     String email,
     String password,
     String username,
@@ -49,6 +55,12 @@ abstract class AuthGateway {
 class RepositoryAuthGateway implements AuthGateway {
   final AuthRepository repository;
   const RepositoryAuthGateway(this.repository);
+
+  @override
+  UserProfile? get currentUserProfile => repository.currentUserProfile;
+
+  @override
+  Stream<UserProfile?> get authStateChanges => repository.authStateChanges;
 
   @override
   Future<bool> emailExists(String email) => repository.emailExists(email);
@@ -77,7 +89,11 @@ class RepositoryAuthGateway implements AuthGateway {
   Future<bool> checkEmailVerified() => repository.checkEmailVerified();
 
   @override
-  Future<void> createAccount(
+  Future<VerificationCheckResult> checkEmailVerificationStatus() =>
+      repository.checkEmailVerificationStatus();
+
+  @override
+  Future<UserProfile> createAccount(
     String email,
     String password,
     String username,
@@ -97,11 +113,6 @@ class RepositoryAuthGateway implements AuthGateway {
 
   @override
   Future<UserProfile?> restoreSession() => repository.restoreSession();
-}
-
-class AuthFlowException implements Exception {
-  final String message;
-  const AuthFlowException(this.message);
 }
 
 class _AuthNavigatorObserver extends NavigatorObserver {
@@ -142,6 +153,7 @@ class _AuthPageState extends State<AuthPage> {
   final nav = GlobalKey<NavigatorState>();
   final draft = AuthDraft();
   final _navCanPop = ValueNotifier<bool>(false);
+  StreamSubscription<UserProfile?>? _authSub;
   // Use the singleton repository so profile state set here (on login/signup)
   // is visible to the same instance watched by ComingSoonPage and the router.
   late final AuthGateway _gateway =
@@ -159,6 +171,7 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _navCanPop.dispose();
     draft.dispose();
     super.dispose();
@@ -214,6 +227,20 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void initState() {
     super.initState();
+    _authSub = _gateway.authStateChanges.listen((authProfile) {
+      if (!mounted) return;
+      if (authProfile != null) {
+        if (!authProfile.onboardingCompleted) {
+          if (authProfile.username.isEmpty) {
+            push(username());
+          } else {
+            push(profile());
+          }
+        } else {
+          done(authProfile);
+        }
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkSession();
     });
@@ -232,17 +259,75 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  void done([UserProfile? userProfile]) {
+  Future<void> done([UserProfile? userProfile]) async {
     widget.onAuthenticated?.call();
     if (widget.onAuthenticated == null) {
       try {
-        if (userProfile?.isAdmin == true) {
-          context.go('/admin');
+        final resolvedProfile =
+            userProfile ??
+            _gateway.currentUserProfile ??
+            await _gateway.restoreSession();
+        if (resolvedProfile?.isAdmin == true) {
+          if (mounted) context.go('/admin');
+          return;
+        }
+
+        // Check for pending invite from deep link first
+        final pendingInvite = AppPreferencesService.instance
+            .getPendingInviteCode();
+        if (pendingInvite != null && pendingInvite.isNotEmpty) {
+          await AppPreferencesService.instance.clearPendingInviteCode();
+          if (mounted) {
+            context.go('/circle-join?code=$pendingInvite');
+            return;
+          }
+        }
+
+        if (resolvedProfile != null) {
+          if (!resolvedProfile.onboardingCompleted) {
+            if (resolvedProfile.username.isEmpty) {
+              push(username());
+            } else {
+              push(profile());
+            }
+            return;
+          }
+
+          final circles = await SupabaseCircleRepository.instance
+              .getUserCircles(resolvedProfile.id);
+          if (mounted) {
+            if (circles.isEmpty) {
+              context.go('/circle-entry');
+            } else {
+              Circle? pendingCircle;
+              bool hasReady = false;
+              for (final c in circles) {
+                final members = await SupabaseCircleRepository.instance
+                    .getCircleMembers(c.id);
+                if (!mounted) return;
+                if (members.where((m) => m.isActive).length >= 2) {
+                  hasReady = true;
+                  break;
+                }
+                pendingCircle ??= c;
+              }
+
+              if (hasReady) {
+                context.go('/today');
+              } else if (pendingCircle != null) {
+                context.go('/circle-invite/${pendingCircle.id}');
+              } else {
+                context.go('/circle-entry');
+              }
+            }
+          }
         } else {
-          context.go('/coming-soon');
+          if (mounted) context.go('/circle-entry');
         }
       } catch (_) {
-        message(context, 'Authentication flow complete.');
+        if (mounted) {
+          message(context, 'Authentication flow complete.');
+        }
       }
     }
   }
@@ -250,16 +335,28 @@ class _AuthPageState extends State<AuthPage> {
   Widget emailVerification() => EmailVerificationScreen(
     email: draft.email.text.trim(),
     onResend: () => _gateway.resendVerification(draft.email.text.trim()),
-    onCheckVerified: () => _gateway.checkEmailVerified(),
-    onVerified: () => push(username()),
+    onCheckVerification: () => _gateway.checkEmailVerificationStatus(),
+    onSessionConfirmed: (sessionProfile) async {
+      final resolvedProfile = sessionProfile ?? await _gateway.restoreSession();
+      if (resolvedProfile == null || !resolvedProfile.onboardingCompleted) {
+        if (resolvedProfile == null || resolvedProfile.username.isEmpty) {
+          push(username());
+        } else {
+          push(profile());
+        }
+      } else {
+        done(resolvedProfile);
+      }
+    },
+    onNeedsSignIn: () => push(loginPassword()),
     onChangeEmail: () => nav.currentState?.pop(),
   );
 
   Widget profile() => ProfileScreen(
     draft: draft,
     gateway: _gateway,
-    onDone: () async {
-      final restored = await _gateway.restoreSession();
+    onDone: (UserProfile? updatedProfile) async {
+      final restored = updatedProfile ?? await _gateway.restoreSession();
       done(restored);
     },
   );
@@ -271,16 +368,30 @@ class _AuthPageState extends State<AuthPage> {
   Widget loginPassword() => LoginPasswordScreen(
     draft: draft,
     gateway: _gateway,
-    onDone: (userProfile) => done(userProfile),
+    onDone: (userProfile) {
+      if (userProfile != null && !userProfile.onboardingCompleted) {
+        if (userProfile.username.isEmpty) {
+          push(username());
+        } else {
+          push(profile());
+        }
+      } else {
+        done(userProfile);
+      }
+    },
     onForgot: () => push(ResetScreen(draft: draft, gateway: _gateway)),
   );
   Widget confirm() => ConfirmScreen(
     draft: draft,
     gateway: _gateway,
     onNext: () async {
-      final isVerified = await _gateway.checkEmailVerified();
-      if (isVerified) {
-        push(username());
+      final result = await _gateway.checkEmailVerificationStatus();
+      if (result.status == VerificationCheckStatus.confirmedWithSession) {
+        if (result.profile == null || !result.profile!.onboardingCompleted) {
+          push(username());
+        } else {
+          done(result.profile);
+        }
       } else {
         push(emailVerification());
       }
@@ -1052,7 +1163,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
 class ProfileScreen extends StatefulWidget {
   final AuthDraft draft;
   final AuthGateway gateway;
-  final VoidCallback onDone;
+  final void Function(UserProfile? profile) onDone;
   const ProfileScreen({
     super.key,
     required this.draft,
@@ -1091,16 +1202,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       error = null;
     });
     try {
-      await widget.gateway.createAccount(
+      final updatedProfile = await widget.gateway.createAccount(
         widget.draft.email.text.trim(),
         widget.draft.password.text,
         widget.draft.username.text.trim().replaceFirst('@', ''),
         widget.draft.photo?.path,
       );
-      if (mounted) widget.onDone();
+      if (mounted) widget.onDone(updatedProfile);
+    } on AvatarUploadException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } on ProfileUpdateException catch (e) {
+      if (mounted) setState(() => error = e.message);
     } catch (_) {
       if (mounted) {
-        setState(() => error = 'Account creation failed. Try again.');
+        setState(() => error = "Couldn't finish your profile. Try again.");
       }
     } finally {
       if (mounted) setState(() => loading = false);
@@ -1325,6 +1440,22 @@ class _ResetScreenState extends State<ResetScreen> {
     try {
       await widget.gateway.sendPasswordReset(widget.draft.email.text.trim());
       if (mounted) setState(() => sent = true);
+    } on AuthFlowException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } on AuthException catch (e) {
+      if (mounted) {
+        if (e.code == 'over_email_send_rate_limit' ||
+            e.statusCode == '429' ||
+            e.message.toLowerCase().contains('rate limit') ||
+            e.message.toLowerCase().contains('over_email_send_rate_limit')) {
+          setState(
+            () => error =
+                'Too many emails were sent recently. Please try again later.',
+          );
+        } else {
+          setState(() => error = e.message);
+        }
+      }
     } catch (_) {
       if (mounted) {
         setState(() => error = 'Could not send the reset link. Try again.');

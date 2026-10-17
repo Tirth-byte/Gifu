@@ -6,14 +6,17 @@ import 'package:gufi/app/router.dart';
 import 'package:gufi/features/auth/presentation/auth_page.dart';
 import 'package:gufi/features/onboarding/presentation/components/circular_arrow_button.dart';
 import 'package:gufi/features/onboarding/presentation/onboarding_page.dart';
+import 'package:gufi/core/services/app_preferences_service.dart';
 import 'package:gufi/core/services/gufi_backend_store.dart';
 import 'package:gufi/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 void main() {
   setUp(() {
+    AppPreferencesService.instance.resetForTesting();
     GufiBackendStore.instance.reset();
     SupabaseAuthRepository.instance.signOut();
+    appRouter.go('/');
   });
   testWidgets('OnboardingPage renders headline, indicator, and next button', (
     WidgetTester tester,

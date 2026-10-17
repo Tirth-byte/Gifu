@@ -8,7 +8,7 @@ import '../domain/models/admin_user_summary.dart';
 import 'providers/admin_providers.dart';
 import 'widgets/admin_user_detail_sheet.dart';
 
-const Color _bg = Color(0xFFF7F9F5);
+const Color _bg = Color(0xFFFFFFFF);
 const Color _navy = Color(0xFF1E3365);
 const Color _blue = Color(0xFF5880DA);
 const Color _muted = Color(0xFF77839A);
@@ -287,7 +287,7 @@ class _AdminDatabaseGridPageState extends ConsumerState<AdminDatabaseGridPage> {
                       label: Text(f),
                       selected: isSel,
                       selectedColor: const Color(0xFFE8F0FE),
-                      backgroundColor: const Color(0xFFF7F9F5),
+                      backgroundColor: const Color(0xFFFAFBFC),
                       labelStyle: AppTypography.inter(
                         fontSize: 12.5,
                         fontWeight: isSel ? FontWeight.w600 : FontWeight.w500,
@@ -320,7 +320,7 @@ class _AdminDatabaseGridPageState extends ConsumerState<AdminDatabaseGridPage> {
                       label: Text(d),
                       selected: isSel,
                       selectedColor: const Color(0xFFE8F0FE),
-                      backgroundColor: const Color(0xFFF7F9F5),
+                      backgroundColor: const Color(0xFFFAFBFC),
                       labelStyle: AppTypography.inter(
                         fontSize: 12.5,
                         fontWeight: isSel ? FontWeight.w600 : FontWeight.w500,
@@ -510,7 +510,7 @@ class _AdminDatabaseGridPageState extends ConsumerState<AdminDatabaseGridPage> {
               label: Text(opt),
               selected: isSel,
               selectedColor: const Color(0xFFE8F0FE),
-              backgroundColor: const Color(0xFFF7F9F5),
+              backgroundColor: const Color(0xFFFAFBFC),
               labelStyle: AppTypography.inter(
                 fontSize: 12,
                 fontWeight: isSel ? FontWeight.w600 : FontWeight.w500,

@@ -8,9 +8,12 @@ class UserProfile {
   final String usernameNormalized;
   final String? displayName;
   final String? profilePhotoUrl;
+  final String? bio;
+  final String? timezone;
   final String authProvider;
   final String role; // 'user' | 'admin'
   final bool onboardingCompleted;
+  final bool profileComplete;
   final String accountStatus; // 'active' | 'disabled'
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -24,31 +27,46 @@ class UserProfile {
     required this.usernameNormalized,
     this.displayName,
     this.profilePhotoUrl,
+    this.bio,
+    this.timezone,
     this.authProvider = 'email',
     this.role = 'user',
     this.onboardingCompleted = false,
+    bool? profileComplete,
     this.accountStatus = 'active',
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : profileComplete = profileComplete ?? onboardingCompleted;
 
   bool get isAdmin => role == 'admin';
   bool get isActive => accountStatus == 'active';
   bool get isDisabled => accountStatus == 'disabled';
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    final email = json['email'] as String? ?? '';
+    final username = json['username'] as String? ?? '';
+    final isComplete =
+        (json['profile_complete'] as bool?) ??
+        (json['onboarding_completed'] as bool?) ??
+        (username.isNotEmpty);
+
     return UserProfile(
       id: json['id'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      emailNormalized: json['email_normalized'] as String? ?? '',
-      emailVerified: json['email_verified'] as bool? ?? false,
-      username: json['username'] as String? ?? '',
-      usernameNormalized: json['username_normalized'] as String? ?? '',
+      email: email,
+      emailNormalized:
+          (json['email_normalized'] as String?) ?? email.toLowerCase(),
+      emailVerified: json['email_verified'] as bool? ?? true,
+      username: username,
+      usernameNormalized:
+          (json['username_normalized'] as String?) ?? username.toLowerCase(),
       displayName: json['display_name'] as String?,
       profilePhotoUrl: json['profile_photo_url'] as String?,
+      bio: json['bio'] as String?,
+      timezone: json['timezone'] as String?,
       authProvider: json['auth_provider'] as String? ?? 'email',
       role: json['role'] as String? ?? 'user',
-      onboardingCompleted: json['onboarding_completed'] as bool? ?? false,
+      onboardingCompleted: isComplete,
+      profileComplete: isComplete,
       accountStatus: json['account_status'] as String? ?? 'active',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
@@ -69,8 +87,11 @@ class UserProfile {
       'username_normalized': usernameNormalized,
       'display_name': displayName,
       'profile_photo_url': profilePhotoUrl,
+      'bio': bio,
+      'timezone': timezone,
       'auth_provider': authProvider,
       'role': role,
+      'profile_complete': profileComplete,
       'onboarding_completed': onboardingCompleted,
       'account_status': accountStatus,
       'created_at': createdAt.toIso8601String(),
@@ -87,13 +108,18 @@ class UserProfile {
     String? usernameNormalized,
     String? displayName,
     String? profilePhotoUrl,
+    String? bio,
+    String? timezone,
     String? authProvider,
     String? role,
     bool? onboardingCompleted,
+    bool? profileComplete,
     String? accountStatus,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
+    final complete =
+        profileComplete ?? onboardingCompleted ?? this.profileComplete;
     return UserProfile(
       id: id ?? this.id,
       email: email ?? this.email,
@@ -103,9 +129,12 @@ class UserProfile {
       usernameNormalized: usernameNormalized ?? this.usernameNormalized,
       displayName: displayName ?? this.displayName,
       profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
+      bio: bio ?? this.bio,
+      timezone: timezone ?? this.timezone,
       authProvider: authProvider ?? this.authProvider,
       role: role ?? this.role,
-      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      onboardingCompleted: complete,
+      profileComplete: complete,
       accountStatus: accountStatus ?? this.accountStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

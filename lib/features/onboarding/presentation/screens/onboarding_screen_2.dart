@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/haptics/app_haptics.dart';
+import '../../../../core/services/app_preferences_service.dart';
 import '../../../../core/theme/app_typography.dart';
 
 /// Screen 02 of the Gufi Onboarding Flow.
@@ -31,7 +32,7 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
   // Screen palette constants
   static const Color primaryBlue = Color(0xFF5880DA);
   static const Color softBlue = Color(0xFFBCDBFA);
-  static const Color screenBg = Color(0xFFF7F9F5);
+  static const Color screenBg = Color(0xFFFFFFFF);
   static const Color deepContrast = Color(0xFF1E3365);
 
   // Screen entrance choreography
@@ -143,6 +144,7 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
     if (_isNavigating) return;
     _isNavigating = true;
     AppHaptics.medium();
+    AppPreferencesService.instance.setHasSeenIntro(true);
     context.push('/auth').then((_) {
       if (mounted) _isNavigating = false;
     });
@@ -183,26 +185,6 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
             return Stack(
               clipBehavior: Clip.none,
               children: [
-                // Subtle atmospheric wash: very pale #BCDBFA (8–12% opacity) behind the meter
-                Positioned(
-                  top: topSpacing - 12.0,
-                  left: (screenWidth - gaugeRadius * 2.2) / 2.0,
-                  child: Container(
-                    width: gaugeRadius * 2.2,
-                    height: gaugeRadius * 1.5,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          softBlue.withValues(alpha: 0.11),
-                          softBlue.withValues(alpha: 0.0),
-                        ],
-                        radius: 0.75,
-                      ),
-                    ),
-                  ),
-                ),
-
                 // Main Content Flow: Meter -> Headline -> Support Copy -> Enormous Journey
                 Positioned.fill(
                   child: Padding(
@@ -999,7 +981,7 @@ class _RefinedContinueButtonState extends State<_RefinedContinueButton>
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF5880DA);
     const primaryBlueDeep = Color(0xFF4F75CC);
-    const screenBg = Color(0xFFF7F9F5);
+    const screenBg = Color(0xFFFFFFFF);
     const limeAccent = Color(0xFFC9F17E);
 
     return AnimatedBuilder(
@@ -1042,7 +1024,7 @@ class _RefinedContinueButtonState extends State<_RefinedContinueButton>
                       fontSize: 18.0,
                       fontWeight: FontWeight.w500,
                       letterSpacing: -0.2,
-                      color: screenBg,
+                      color: Colors.white,
                     ),
                   ),
                   AnimatedBuilder(
@@ -1057,8 +1039,7 @@ class _RefinedContinueButtonState extends State<_RefinedContinueButton>
                             height: 44.0,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFFF7F9F5)
-                                  .withValues(alpha: 0.08),
+                              color: Colors.white.withValues(alpha: 0.08),
                               boxShadow: _limeGlowAnimation.value > 0.01
                                   ? [
                                       BoxShadow(

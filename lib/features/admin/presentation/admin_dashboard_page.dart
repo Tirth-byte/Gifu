@@ -11,7 +11,7 @@ import 'admin_database_grid_page.dart';
 import 'providers/admin_providers.dart';
 import 'widgets/admin_user_detail_sheet.dart';
 
-const Color _bg = Color(0xFFF7F9F5);
+const Color _bg = Color(0xFFFFFFFF);
 const Color _navy = Color(0xFF1E3365);
 const Color _blue = Color(0xFF5880DA);
 const Color _muted = Color(0xFF77839A);
@@ -319,94 +319,97 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   const Divider(height: 1, color: Color(0xFFF0F4FA)),
               itemBuilder: (context, index) {
                 final user = _recentUsers[index];
-                return ListTile(
-                  onTap: () => _openUserDetail(user),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 4,
-                  ),
-                  leading: CircleAvatar(
-                    radius: 17,
-                    backgroundColor: const Color(0xFFE8EEF5),
-                    child: Text(
-                      user.username.isNotEmpty
-                          ? user.username[0].toUpperCase()
-                          : 'U',
-                      style: AppTypography.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _navy,
-                      ),
+                return Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    onTap: () => _openUserDetail(user),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
-                  ),
-                  title: Row(
-                    children: [
-                      Text(
-                        '@${user.username}',
+                    leading: CircleAvatar(
+                      radius: 17,
+                      backgroundColor: const Color(0xFFE8EEF5),
+                      child: Text(
+                        user.username.isNotEmpty
+                            ? user.username[0].toUpperCase()
+                            : 'U',
                         style: AppTypography.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                           color: _navy,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: user.authProvider == 'google'
-                              ? const Color(0xFFE8F0FE)
-                              : (user.authProvider == 'apple'
-                                    ? const Color(0xFFF1F3F5)
-                                    : const Color(0xFFE6F4EA)),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          user.authProvider == 'google'
-                              ? 'Google'
-                              : (user.authProvider == 'apple'
-                                    ? 'Apple'
-                                    : 'Email'),
+                    ),
+                    title: Row(
+                      children: [
+                        Text(
+                          '@${user.username}',
                           style: AppTypography.inter(
-                            fontSize: 10,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: _navy,
                           ),
                         ),
-                      ),
-                      if (user.isDisabled) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFDECEC),
+                            color: user.authProvider == 'google'
+                                ? const Color(0xFFE8F0FE)
+                                : (user.authProvider == 'apple'
+                                      ? const Color(0xFFF1F3F5)
+                                      : const Color(0xFFE6F4EA)),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            'Disabled',
+                            user.authProvider == 'google'
+                                ? 'Google'
+                                : (user.authProvider == 'apple'
+                                      ? 'Apple'
+                                      : 'Email'),
                             style: AppTypography.inter(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFFB54848),
+                              color: _navy,
                             ),
                           ),
                         ),
+                        if (user.isDisabled) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFDECEC),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Disabled',
+                              style: AppTypography.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFB54848),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  subtitle: Text(
-                    user.email,
-                    style: AppTypography.inter(fontSize: 12.5, color: _muted),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                    color: _muted,
+                    ),
+                    subtitle: Text(
+                      user.email,
+                      style: AppTypography.inter(fontSize: 12.5, color: _muted),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right,
+                      size: 18,
+                      color: _muted,
+                    ),
                   ),
                 );
               },

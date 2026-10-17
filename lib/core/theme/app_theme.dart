@@ -16,6 +16,11 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
       canvasColor: AppColors.background,
+      cardColor: Colors.white,
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+      ),
       dialogTheme: const DialogThemeData(backgroundColor: AppColors.surface),
       splashFactory: NoSplash.splashFactory,
       highlightColor: Colors.transparent,

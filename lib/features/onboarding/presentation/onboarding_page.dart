@@ -128,323 +128,307 @@ class _OnboardingPageState extends State<OnboardingPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.gray50,
-      body: Container(
-        // Atmospheric subtle background depth (3% wash)
-        decoration: const BoxDecoration(
-          color: AppColors.gray50,
-          gradient: RadialGradient(
-            center: Alignment(-0.8, -0.65),
-            radius: 1.5,
-            colors: [Color(0xFFE2E9F2), AppColors.gray50],
-          ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // 0. Oversized Background Editorial Typographic Watermark (Anchored to physical viewport)
-            Positioned(
-              left: 20.0,
-              bottom: -28.0,
-              child: IgnorePointer(
-                child: Text(
-                  'Gufi',
-                  style: TextStyle(
-                    fontFamily: AppTypography.gambarinoFontFamily,
-                    fontSize: 195.0,
-                    fontWeight: FontWeight.w400,
-                    height: 0.86,
-                    letterSpacing: -6.0,
-                    color: AppColors.navy900.withValues(alpha: 0.15),
-                  ),
+      backgroundColor: Colors.white,
+      body: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          // 0. Oversized Background Editorial Typographic Watermark (Anchored to physical viewport)
+          Positioned(
+            left: 20.0,
+            bottom: -28.0,
+            child: IgnorePointer(
+              child: Text(
+                'Gufi',
+                style: TextStyle(
+                  fontFamily: AppTypography.gambarinoFontFamily,
+                  fontSize: 195.0,
+                  fontWeight: FontWeight.w400,
+                  height: 0.86,
+                  letterSpacing: -6.0,
+                  color: AppColors.navy900.withValues(alpha: 0.15),
                 ),
               ),
             ),
+          ),
 
-            // Foreground UI inside SafeArea
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final screenWidth = constraints.maxWidth;
-                  final usableHeight = constraints.maxHeight;
+          // Foreground UI inside SafeArea
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final screenWidth = constraints.maxWidth;
+                final usableHeight = constraints.maxHeight;
 
-                  // 1. Full-Display Scale: 88-92% width (margins 22px)
-                  const cardHorizontalMargin = 22.0;
-                  final cardWidth = screenWidth - (cardHorizontalMargin * 2);
+                // 1. Full-Display Scale: 88-92% width (margins 22px)
+                const cardHorizontalMargin = 22.0;
+                final cardWidth = screenWidth - (cardHorizontalMargin * 2);
 
-                  // 2. Dominant Hero Height: ~41.5% of usable height
-                  final isCompact = usableHeight < 680;
-                  final cardHeight = isCompact
-                      ? (usableHeight * 0.38).clamp(240.0, 290.0)
-                      : (usableHeight * 0.415).clamp(290.0, 365.0);
+                // 2. Dominant Hero Height: ~41.5% of usable height
+                final isCompact = usableHeight < 680;
+                final cardHeight = isCompact
+                    ? (usableHeight * 0.38).clamp(240.0, 290.0)
+                    : (usableHeight * 0.415).clamp(290.0, 365.0);
 
-                  // 3. Dominant Mystical Eye Artwork: Increased ~10% (8–12% target), perfectly centered
-                  final artworkSize = (cardWidth * 0.86).clamp(
-                    220.0,
-                    cardHeight - 20.0,
-                  );
+                // 3. Dominant Mystical Eye Artwork: Increased ~10% (8–12% target), perfectly centered
+                final artworkSize = (cardWidth * 0.86).clamp(
+                  220.0,
+                  cardHeight - 20.0,
+                );
 
-                  // 4. Tightened Top Opening & Spacing Rhythm
-                  final topGap = isCompact ? 10.0 : 16.0;
-                  final heroToPaginationGap = isCompact ? 16.0 : 20.0;
-                  final paginationToHeadlineGap = isCompact ? 22.0 : 28.0;
+                // 4. Tightened Top Opening & Spacing Rhythm
+                final topGap = isCompact ? 10.0 : 16.0;
+                final heroToPaginationGap = isCompact ? 16.0 : 20.0;
+                final paginationToHeadlineGap = isCompact ? 22.0 : 28.0;
 
-                  // 5. Unified Left Grid: exactly 30.0px
-                  const textMargin = 30.0;
+                // 5. Unified Left Grid: exactly 30.0px
+                const textMargin = 30.0;
 
-                  // Gambarino 40-44px display font size
-                  final headlineFontSize = (screenWidth * 0.106).clamp(
-                    40.0,
-                    44.0,
-                  );
+                // Gambarino 40-44px display font size
+                final headlineFontSize = (screenWidth * 0.106).clamp(
+                  40.0,
+                  44.0,
+                );
 
-                  return Stack(
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      // Upper / Middle Content Flow
-                      Positioned.fill(
-                        child: SingleChildScrollView(
-                          physics: const ClampingScrollPhysics(),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(height: topGap),
+                return Stack(
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    // Upper / Middle Content Flow
+                    Positioned.fill(
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(height: topGap),
 
-                              // 1. Enormous Hero Card (Dominates upper 45%)
-                              Center(
-                                child: FadeTransition(
-                                  opacity: _cardFade,
-                                  child: AnimatedBuilder(
-                                    animation: _animController,
-                                    builder: (context, child) =>
-                                        Transform.translate(
-                                          offset: Offset(0, _cardSlide.value),
-                                          child: child,
+                            // 1. Enormous Hero Card (Dominates upper 45%)
+                            Center(
+                              child: FadeTransition(
+                                opacity: _cardFade,
+                                child: AnimatedBuilder(
+                                  animation: _animController,
+                                  builder: (context, child) =>
+                                      Transform.translate(
+                                        offset: Offset(0, _cardSlide.value),
+                                        child: child,
+                                      ),
+                                  child: Container(
+                                    width: cardWidth,
+                                    height: cardHeight,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(36.0),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x0A273869),
+                                          blurRadius: 45,
+                                          spreadRadius: -2,
+                                          offset: Offset(0, 16),
                                         ),
-                                    child: Container(
-                                      width: cardWidth,
-                                      height: cardHeight,
+                                        BoxShadow(
+                                          color: Color(0x05273869),
+                                          blurRadius: 15,
+                                          offset: Offset(0, 5),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: AnimatedBuilder(
+                                        animation: _animController,
+                                        builder: (context, child) =>
+                                            Transform.scale(
+                                              scale: _symbolScale.value,
+                                              child: child,
+                                            ),
+                                        child: BlinkingGufiHeroArtwork(
+                                          size: artworkSize,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: heroToPaginationGap),
+
+                            // 2. Visual Pagination Design Element (Reference Aesthetic)
+                            FadeTransition(
+                              opacity: _paginationFade,
+                              child: Center(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Active Indicator (42px × 6px pill)
+                                    Container(
+                                      width: 42.0,
+                                      height: 6.0,
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(
-                                          36.0,
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x0A273869),
-                                            blurRadius: 45,
-                                            spreadRadius: -2,
-                                            offset: Offset(0, 16),
-                                          ),
-                                          BoxShadow(
-                                            color: Color(0x05273869),
-                                            blurRadius: 15,
-                                            offset: Offset(0, 5),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Center(
-                                        child: AnimatedBuilder(
-                                          animation: _animController,
-                                          builder: (context, child) =>
-                                              Transform.scale(
-                                                scale: _symbolScale.value,
-                                                child: child,
-                                              ),
-                                          child: BlinkingGufiHeroArtwork(
-                                            size: artworkSize,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: heroToPaginationGap),
-
-                              // 2. Visual Pagination Design Element (Reference Aesthetic)
-                              FadeTransition(
-                                opacity: _paginationFade,
-                                child: Center(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Active Indicator (42px × 6px pill)
-                                      Container(
-                                        width: 42.0,
-                                        height: 6.0,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.navy900,
-                                          borderRadius: BorderRadius.circular(
-                                            999.0,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8.0),
-                                      // Inactive Indicator 1 (10px × 6px)
-                                      Container(
-                                        width: 10.0,
-                                        height: 6.0,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.navy800.withValues(
-                                            alpha: 0.20,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            999.0,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8.0),
-                                      // Inactive Indicator 2 (10px × 6px)
-                                      Container(
-                                        width: 10.0,
-                                        height: 6.0,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.navy800.withValues(
-                                            alpha: 0.20,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            999.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: paginationToHeadlineGap),
-
-                              // 3. Editorial Headline in GAMBARINO (EXACTLY THREE DELIBERATE LINES)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: textMargin,
-                                ),
-                                child: FadeTransition(
-                                  opacity: _headlineFade,
-                                  child: AnimatedBuilder(
-                                    animation: _animController,
-                                    builder: (context, child) =>
-                                        Transform.translate(
-                                          offset: Offset(
-                                            0,
-                                            _headlineSlide.value,
-                                          ),
-                                          child: child,
-                                        ),
-                                    child: Text(
-                                      'Commit.\nShow up.\nGrow together.',
-                                      style: TextStyle(
-                                        fontFamily:
-                                            AppTypography.gambarinoFontFamily,
-                                        fontSize: headlineFontSize,
-                                        fontWeight: FontWeight.w400,
-                                        height: 1.01,
-                                        letterSpacing: -0.6,
                                         color: AppColors.navy900,
+                                        borderRadius: BorderRadius.circular(
+                                          999.0,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8.0),
+                                    // Inactive Indicator 1 (10px × 6px)
+                                    Container(
+                                      width: 10.0,
+                                      height: 6.0,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.navy800.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999.0,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8.0),
+                                    // Inactive Indicator 2 (10px × 6px)
+                                    Container(
+                                      width: 10.0,
+                                      height: 6.0,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.navy800.withValues(
+                                          alpha: 0.20,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999.0,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                            ),
 
-                              const SizedBox(height: 16.0),
+                            SizedBox(height: paginationToHeadlineGap),
 
-                              // 4. Single-Line Supporting Copy (Aligned to 30px Grid)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: textMargin,
-                                ),
-                                child: FadeTransition(
-                                  opacity: _supportFade,
+                            // 3. Editorial Headline in GAMBARINO (EXACTLY THREE DELIBERATE LINES)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: textMargin,
+                              ),
+                              child: FadeTransition(
+                                opacity: _headlineFade,
+                                child: AnimatedBuilder(
+                                  animation: _animController,
+                                  builder: (context, child) =>
+                                      Transform.translate(
+                                        offset: Offset(0, _headlineSlide.value),
+                                        child: child,
+                                      ),
                                   child: Text(
-                                    'Make it visible. Follow through.',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.inter(
-                                      fontSize: isCompact ? 14.0 : 15.5,
-                                      fontWeight: FontWeight.w400,
-                                      height: 1.35,
-                                      letterSpacing: -0.15,
-                                      color: AppColors.navy800.withValues(
-                                        alpha: 0.52,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-
-                              // Clearance ensuring content flows comfortably above the bottom anchor
-                              const SizedBox(height: 150.0),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Bottom Anchored Region: Gufi Signature on Left (30px) + CTA on Right (22px)
-                      // Moved upward by ~46px for an intentional, balanced 70–90px lower breathing rhythm
-                      Positioned(
-                        left: textMargin,
-                        right: cardHorizontalMargin,
-                        bottom: isCompact ? 56.0 : 110.0,
-                        child: FadeTransition(
-                          opacity: _bottomRowFade,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              // Editorial Gufi Signature in GAMBARINO
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Gufi',
+                                    'Commit.\nShow up.\nGrow together.',
                                     style: TextStyle(
                                       fontFamily:
                                           AppTypography.gambarinoFontFamily,
-                                      fontSize: 23.0,
+                                      fontSize: headlineFontSize,
                                       fontWeight: FontWeight.w400,
-                                      letterSpacing: -0.4,
+                                      height: 1.01,
+                                      letterSpacing: -0.6,
                                       color: AppColors.navy900,
-                                      height: 1.05,
                                     ),
                                   ),
-                                  const SizedBox(height: 2.0),
-                                  Text(
-                                    'GROW TOGETHER.',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 1.8,
-                                      color: AppColors.navy800.withValues(
-                                        alpha: 0.55,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
+                            ),
 
-                              // Navigation CTA Button (66px, 1.6px border, 23px arrow)
-                              CircularArrowButton(
-                                onTap: _onCtaPressed,
-                                size: 66.0,
-                                borderWidth: 1.6,
-                                iconSize: 23.0,
-                                color: AppColors.navy900,
+                            const SizedBox(height: 16.0),
+
+                            // 4. Single-Line Supporting Copy (Aligned to 30px Grid)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: textMargin,
                               ),
-                            ],
-                          ),
+                              child: FadeTransition(
+                                opacity: _supportFade,
+                                child: Text(
+                                  'Make it visible. Follow through.',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: isCompact ? 14.0 : 15.5,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.35,
+                                    letterSpacing: -0.15,
+                                    color: AppColors.navy800.withValues(
+                                      alpha: 0.52,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Clearance ensuring content flows comfortably above the bottom anchor
+                            const SizedBox(height: 150.0),
+                          ],
                         ),
                       ),
-                    ],
-                  );
-                },
-              ),
+                    ),
+
+                    // Bottom Anchored Region: Gufi Signature on Left (30px) + CTA on Right (22px)
+                    // Moved upward by ~46px for an intentional, balanced 70–90px lower breathing rhythm
+                    Positioned(
+                      left: textMargin,
+                      right: cardHorizontalMargin,
+                      bottom: isCompact ? 56.0 : 110.0,
+                      child: FadeTransition(
+                        opacity: _bottomRowFade,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Editorial Gufi Signature in GAMBARINO
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Gufi',
+                                  style: TextStyle(
+                                    fontFamily:
+                                        AppTypography.gambarinoFontFamily,
+                                    fontSize: 23.0,
+                                    fontWeight: FontWeight.w400,
+                                    letterSpacing: -0.4,
+                                    color: AppColors.navy900,
+                                    height: 1.05,
+                                  ),
+                                ),
+                                const SizedBox(height: 2.0),
+                                Text(
+                                  'GROW TOGETHER.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.8,
+                                    color: AppColors.navy800.withValues(
+                                      alpha: 0.55,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            // Navigation CTA Button (66px, 1.6px border, 23px arrow)
+                            CircularArrowButton(
+                              onTap: _onCtaPressed,
+                              size: 66.0,
+                              borderWidth: 1.6,
+                              iconSize: 23.0,
+                              color: AppColors.navy900,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
