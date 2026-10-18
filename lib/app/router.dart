@@ -79,14 +79,13 @@ GoRouter createAppRouter({
             _sharedAuthRepo.currentUserProfile ??
             await _sharedAuthRepo.restoreSession();
 
+        // 1. Check Supabase authenticated session FIRST.
+        // 2. If NO valid authenticated session exists: ALWAYS start at Onboarding Screen 1.
         if (profile == null) {
-          final hasSeenIntro = AppPreferencesService.instance.getHasSeenIntro();
-          if (hasSeenIntro) {
-            return '/auth';
-          }
           return null;
         }
 
+        // 3. If a valid authenticated session DOES exist: resolve authenticated destination.
         return await _resolveUserLandingRoute();
       },
       builder: (context, state) => const OnboardingPage(),

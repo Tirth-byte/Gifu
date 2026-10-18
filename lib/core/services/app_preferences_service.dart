@@ -12,14 +12,14 @@ class AppPreferencesService {
   static const _keyPendingInviteCode = 'gufi_pending_invite_code';
 
   SharedPreferences? _prefs;
-  bool _memoryHasSeenIntro = false;
   String? _memoryPendingInviteCode;
 
   Future<void> init() async {
     try {
       _prefs ??= await SharedPreferences.getInstance();
+      // Clean up legacy flag if previously set on disk so cold launch starts at Screen 1
       if (_prefs != null && _prefs!.containsKey(_keyHasSeenIntro)) {
-        _memoryHasSeenIntro = _prefs!.getBool(_keyHasSeenIntro) ?? false;
+        await _prefs!.remove(_keyHasSeenIntro);
       }
       if (_prefs != null && _prefs!.containsKey(_keyPendingInviteCode)) {
         _memoryPendingInviteCode = _prefs!.getString(_keyPendingInviteCode);
@@ -27,17 +27,14 @@ class AppPreferencesService {
     } catch (_) {}
   }
 
-  bool get hasSeenIntro =>
-      _prefs?.getBool(_keyHasSeenIntro) ?? _memoryHasSeenIntro;
+  /// Deprecated: public onboarding is not permanently completed by viewing screens.
+  /// Cold launches for unauthenticated users always start at Screen 1.
+  bool get hasSeenIntro => false;
 
-  bool getHasSeenIntro() => hasSeenIntro;
+  bool getHasSeenIntro() => false;
 
   Future<void> setHasSeenIntro(bool value) async {
-    _memoryHasSeenIntro = value;
-    try {
-      await init();
-      await _prefs?.setBool(_keyHasSeenIntro, value);
-    } catch (_) {}
+    // No-op: unauthenticated cold launches always start at Screen 1.
   }
 
   String? get pendingInviteCode =>
@@ -69,7 +66,6 @@ class AppPreferencesService {
   }
 
   void resetForTesting() {
-    _memoryHasSeenIntro = false;
     _memoryPendingInviteCode = null;
     try {
       _prefs?.clear();

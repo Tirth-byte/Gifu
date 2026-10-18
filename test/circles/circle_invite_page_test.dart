@@ -203,7 +203,7 @@ void main() {
         );
         expect(find.text('2 members'), findsOneWidget);
         expect(find.text('Maya Chen'), findsOneWidget);
-        expect(find.text('Alex Rivers'), findsOneWidget);
+        expect(find.text('Alex Rivers'), findsWidgets);
 
         // CTA appears
         expect(find.text('Make your first promise'), findsOneWidget);

@@ -50,3 +50,7 @@ app.*.map.json
 # Local design references and screen captures
 /temp/
 supabase/.temp/
+
+# Developer secrets and credentials
+dev.secrets.json
+*.secrets.json

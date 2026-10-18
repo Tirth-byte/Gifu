@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as sky show Canvas;
 
 import 'package:flutter/material.dart';
 
@@ -19,6 +21,21 @@ import '../data/repositories/supabase_auth_repository.dart';
 import '../../circles/data/repositories/supabase_circle_repository.dart';
 import '../../circles/domain/models/circle.dart';
 import 'screens/email_verification_screen.dart';
+
+class DevToolsConfig {
+  static const bool enabled = bool.fromEnvironment(
+    'GUFI_DEV_TOOLS',
+    defaultValue: false,
+  );
+  static const String devAEmail = String.fromEnvironment('GUFI_DEV_A_EMAIL');
+  static const String devAPassword = String.fromEnvironment(
+    'GUFI_DEV_A_PASSWORD',
+  );
+  static const String devBEmail = String.fromEnvironment('GUFI_DEV_B_EMAIL');
+  static const String devBPassword = String.fromEnvironment(
+    'GUFI_DEV_B_PASSWORD',
+  );
+}
 
 const bg = Color(0xFFFFFFFF);
 const navy = Color(0xFF1E3365);
@@ -117,25 +134,39 @@ class RepositoryAuthGateway implements AuthGateway {
 
 class _AuthNavigatorObserver extends NavigatorObserver {
   final VoidCallback onStateChanged;
+  Type? currentTopWidgetType;
+
   _AuthNavigatorObserver(this.onStateChanged);
+
+  void _updateTop(Route<dynamic>? route) {
+    if (route is AuthPageRoute) {
+      currentTopWidgetType = route.child.runtimeType;
+    } else {
+      currentTopWidgetType = null;
+    }
+  }
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _updateTop(route);
     onStateChanged();
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _updateTop(previousRoute);
     onStateChanged();
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _updateTop(previousRoute);
     onStateChanged();
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    _updateTop(newRoute);
     onStateChanged();
   }
 }
@@ -212,6 +243,7 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   void _handleBack() {
+    FocusManager.instance.primaryFocus?.unfocus();
     if (nav.currentState?.canPop() ?? false) {
       nav.currentState!.pop();
     } else {
@@ -220,8 +252,13 @@ class _AuthPageState extends State<AuthPage> {
   }
 
   void push(Widget child) {
+    if (!mounted) return;
+    if (_observer.currentTopWidgetType == child.runtimeType) {
+      return;
+    }
+    _observer.currentTopWidgetType = child.runtimeType;
     AppHaptics.selection();
-    nav.currentState?.push<void>(_Route(child));
+    nav.currentState?.push<void>(AuthPageRoute(child));
   }
 
   @override
@@ -418,43 +455,62 @@ class _AuthPageState extends State<AuthPage> {
       child: Scaffold(
         backgroundColor: bg,
         resizeToAvoidBottomInset: false,
-        body: Navigator(
-          key: nav,
-          observers: [_observer],
-          onGenerateRoute: (_) => MaterialPageRoute<void>(
-            builder: (_) => WelcomeScreen(
-              onBack: _handleBack,
-              onCreate: () => push(
-                SignupEmailScreen(
-                  draft: draft,
-                  gateway: _gateway,
-                  onNext: () => push(password()),
-                  onLogin: () => push(loginPassword()),
+        body: SizedBox.expand(
+          child: ClipRect(
+            child: Navigator(
+              key: nav,
+              observers: [_observer],
+              onGenerateRoute: (_) => AuthRootRoute(
+                WelcomeScreen(
+                  onBack: _handleBack,
+                  onCreate: () => push(
+                    SignupEmailScreen(
+                      draft: draft,
+                      gateway: _gateway,
+                      onNext: () => push(password()),
+                      onLogin: () => push(loginPassword()),
+                    ),
+                  ),
+                  onLogin: () => push(
+                    LoginEmailScreen(
+                      draft: draft,
+                      onNext: () => push(loginPassword()),
+                    ),
+                  ),
+                  onProvider: (provider) async {
+                    final needsProfile = await _gateway.continueWithProvider(
+                      provider,
+                    );
+                    if (!mounted) return;
+                    if (needsProfile) {
+                      push(username());
+                    } else {
+                      final restored = await _gateway.restoreSession();
+                      done(restored);
+                    }
+                  },
+                  onQuickLogin: _handleQuickLogin,
                 ),
               ),
-              onLogin: () => push(
-                LoginEmailScreen(
-                  draft: draft,
-                  onNext: () => push(loginPassword()),
-                ),
-              ),
-              onProvider: (provider) async {
-                final needsProfile = await _gateway.continueWithProvider(
-                  provider,
-                );
-                if (!mounted) return;
-                if (needsProfile) {
-                  push(username());
-                } else {
-                  final restored = await _gateway.restoreSession();
-                  done(restored);
-                }
-              },
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleQuickLogin(String email, String password) async {
+    final userProfile = await _gateway.logIn(email.trim(), password);
+    if (!mounted) return;
+    if (userProfile != null && !userProfile.onboardingCompleted) {
+      if (userProfile.username.isEmpty) {
+        push(username());
+      } else {
+        push(profile());
+      }
+    } else {
+      await done(userProfile);
+    }
   }
 }
 
@@ -472,30 +528,75 @@ class AuthDraft {
   }
 }
 
-class _Route extends PageRouteBuilder<void> {
-  _Route(Widget child)
+class AuthPageRoute extends PageRouteBuilder<void> {
+  final Widget child;
+
+  AuthPageRoute(this.child)
     : super(
-        transitionDuration: const Duration(milliseconds: 170),
-        reverseTransitionDuration: const Duration(milliseconds: 150),
-        pageBuilder: (_, _, _) => child,
-        transitionsBuilder: (_, animation, _, child) => FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-            reverseCurve: Curves.easeIn,
-          ),
-          child: SlideTransition(
-            position: Tween(begin: const Offset(0.02, 0), end: Offset.zero)
-                .animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                    reverseCurve: Curves.easeInCubic,
-                  ),
-                ),
-            child: child,
-          ),
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        opaque: true,
+        pageBuilder: (_, _, _) => SizedBox.expand(
+          child: ColoredBox(color: const Color(0xFFFFFFFF), child: child),
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          final primaryCurved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeOutCubic,
+          );
+          final secondaryCurved = CurvedAnimation(
+            parent: secondaryAnimation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeOutCubic,
+          );
+
+          return ClipRect(
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: Offset.zero,
+                end: const Offset(-0.20, 0.0),
+              ).animate(secondaryCurved),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(1.0, 0.0),
+                  end: Offset.zero,
+                ).animate(primaryCurved),
+                child: child,
+              ),
+            ),
+          );
+        },
+      );
+}
+
+class AuthRootRoute extends PageRouteBuilder<void> {
+  final Widget child;
+
+  AuthRootRoute(this.child)
+    : super(
+        transitionDuration: Duration.zero,
+        opaque: true,
+        pageBuilder: (_, _, _) => SizedBox.expand(
+          child: ColoredBox(color: const Color(0xFFFFFFFF), child: child),
+        ),
+        transitionsBuilder: (context, _, secondaryAnimation, child) {
+          final secondaryCurved = CurvedAnimation(
+            parent: secondaryAnimation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeOutCubic,
+          );
+
+          return ClipRect(
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: Offset.zero,
+                end: const Offset(-0.20, 0.0),
+              ).animate(secondaryCurved),
+              child: child,
+            ),
+          );
+        },
       );
 }
 
@@ -504,92 +605,56 @@ class WelcomeScreen extends StatefulWidget {
   final VoidCallback onLogin;
   final Future<void> Function(AuthProvider) onProvider;
   final VoidCallback onBack;
+  final Future<void> Function(String email, String password)? onQuickLogin;
+
   const WelcomeScreen({
     super.key,
     required this.onCreate,
     required this.onLogin,
     required this.onProvider,
     required this.onBack,
+    this.onQuickLogin,
   });
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen>
-    with SingleTickerProviderStateMixin {
+class _WelcomeScreenState extends State<WelcomeScreen> {
   AuthProvider? loading;
-  late final AnimationController _entranceController;
-  late final Animation<double> _symbolOpacity;
-  late final Animation<double> _symbolTranslate;
-  late final Animation<double> _textOpacity;
-  late final Animation<double> _textTranslate;
-  late final Animation<double> _actionOpacity;
-  late final Animation<double> _actionTranslate;
+  String? _quickLoggingIn;
 
-  @override
-  void initState() {
-    super.initState();
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
+  Future<void> _quickLogin(String account) async {
+    if (_quickLoggingIn != null || loading != null) return;
 
-    const ease = Curves.easeOutCubic;
+    final email = account == 'A'
+        ? DevToolsConfig.devAEmail
+        : DevToolsConfig.devBEmail;
+    final password = account == 'A'
+        ? DevToolsConfig.devAPassword
+        : DevToolsConfig.devBPassword;
 
-    _symbolOpacity = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.0, 0.75, curve: Curves.easeOut),
-    );
-    _symbolTranslate = Tween<double>(begin: 6.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.0, 0.75, curve: ease),
-      ),
-    );
-
-    _textOpacity = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.12, 0.88, curve: Curves.easeOut),
-    );
-    _textTranslate = Tween<double>(begin: 6.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.12, 0.88, curve: ease),
-      ),
-    );
-
-    _actionOpacity = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.24, 1.0, curve: Curves.easeOut),
-    );
-    _actionTranslate = Tween<double>(begin: 4.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.24, 1.0, curve: ease),
-      ),
-    );
-
-    _entranceController.forward();
-  }
-
-  @override
-  void dispose() {
-    _entranceController.dispose();
-    super.dispose();
-  }
-
-  void _handleCreate() {
-    if (!_entranceController.isCompleted) {
-      _entranceController.value = 1.0;
+    if (email.isEmpty || password.isEmpty) {
+      if (mounted) {
+        message(
+          context,
+          'Account $account credentials not configured in dev.secrets.json',
+        );
+      }
+      return;
     }
-    widget.onCreate();
-  }
 
-  void _handleLogin() {
-    if (!_entranceController.isCompleted) {
-      _entranceController.value = 1.0;
+    setState(() => _quickLoggingIn = account);
+    try {
+      await widget.onQuickLogin?.call(email, password);
+    } on AuthFlowException catch (e) {
+      if (mounted) message(context, e.message);
+    } on AuthException catch (e) {
+      if (mounted) message(context, e.message);
+    } catch (_) {
+      if (mounted) message(context, 'Authentication failed. Try again.');
+    } finally {
+      if (mounted) setState(() => _quickLoggingIn = null);
     }
-    widget.onLogin();
   }
 
   Future<void> provider(AuthProvider value) async {
@@ -604,193 +669,198 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     }
   }
 
-  Widget _wrapAnimated({
-    required Animation<double> opacity,
-    required Animation<double> translate,
-    required Widget child,
-  }) {
-    return AnimatedBuilder(
-      animation: _entranceController,
-      builder: (context, staticChild) {
-        if (_entranceController.isCompleted) {
-          return staticChild!;
-        }
-        return Transform.translate(
-          offset: Offset(0, translate.value),
-          child: Opacity(
-            opacity: opacity.value.clamp(0.0, 1.0),
-            child: staticChild,
-          ),
-        );
-      },
-      child: child,
-    );
-  }
-
   @override
-  Widget build(BuildContext context) => MediaQuery.removeViewInsets(
-    removeBottom: true,
-    context: context,
-    child: Canvas(
-      resizeToAvoidBottomInset: false,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          LayoutBuilder(
-            builder: (_, box) {
-              final screenH = MediaQuery.sizeOf(context).height;
-              final compact = screenH < 750;
-              final veryCompact = screenH < 620;
-              final topHeroSpace = veryCompact ? 16.0 : (compact ? 36.0 : 64.0);
-              final symbolSize = veryCompact ? 96.0 : (compact ? 112.0 : 124.0);
-              final headlineSize = compact ? 44.0 : 48.0;
-              final symbolToHeadGap = veryCompact
-                  ? 20.0
-                  : (compact ? 28.0 : 38.0);
+  Widget build(BuildContext context) => Canvas(
+    resizeToAvoidBottomInset: false,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        LayoutBuilder(
+          builder: (innerContext, box) {
+            final screenH = MediaQuery.sizeOf(innerContext).height;
+            final compact = screenH < 750;
+            final veryCompact = screenH < 620;
+            final topHeroSpace = veryCompact ? 16.0 : (compact ? 24.0 : 36.0);
+            final symbolSize = veryCompact ? 96.0 : (compact ? 112.0 : 124.0);
+            final headlineSize = compact ? 44.0 : 48.0;
+            final symbolToHeadGap = veryCompact
+                ? 20.0
+                : (compact ? 28.0 : 38.0);
+            final actionGroupTopGap = veryCompact
+                ? 8.0
+                : (compact ? 12.0 : 16.0);
+            final dividerGap = veryCompact ? 12.0 : (compact ? 16.0 : 20.0);
+            final legalGap = veryCompact ? 12.0 : (compact ? 16.0 : 20.0);
+            final legalBottomGap = veryCompact ? 2.0 : 6.0;
 
-              return SingleChildScrollView(
+            Widget buildContent() => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Breathing space from top SafeArea / back button level
+                SizedBox(height: topHeroSpace),
+
+                // 1. COMPOSED HERO REGION
+                Center(
+                  child: Image.asset(
+                    'assets/images/gufi_hero_eye.png',
+                    width: symbolSize,
+                    height: symbolSize,
+                    cacheWidth: 372,
+                    cacheHeight: 372,
+                  ),
+                ),
+                SizedBox(height: symbolToHeadGap),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Welcome to Gufi',
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontFamily: AppTypography.gambarinoFontFamily,
+                          fontSize: headlineSize,
+                          height: 1.05,
+                          letterSpacing: -0.7,
+                          color: navy,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Show up. Follow through. Together.',
+                      textAlign: TextAlign.center,
+                      style: ui(
+                        16.5,
+                        color: const Color(0xFF5A6A85),
+                        height: 1.35,
+                        spacing: -0.15,
+                        weight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 2. FLEXIBLE BREATHING SPACE BETWEEN HERO AND ACTIONS
+                const Spacer(),
+                SizedBox(height: actionGroupTopGap),
+
+                // 3. ACTION GROUP
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    PrimaryButton(
+                      label: 'Create an account',
+                      onPressed: widget.onCreate,
+                    ),
+                    const SizedBox(height: 12),
+                    SecondaryButton(label: 'Log in', onPressed: widget.onLogin),
+                    SizedBox(height: dividerGap),
+                    const DividerLabel(),
+                    SizedBox(height: dividerGap),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ProviderButton(
+                            label: 'Apple',
+                            loading: loading == AuthProvider.apple,
+                            icon: const Icon(
+                              Icons.apple,
+                              size: 24,
+                              color: navy,
+                            ),
+                            onPressed: () => provider(AuthProvider.apple),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ProviderButton(
+                            label: 'Google',
+                            loading: loading == AuthProvider.google,
+                            icon: Text(
+                              'G',
+                              style: ui(
+                                21,
+                                color: const Color(0xFF4285F4),
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                            onPressed: () => provider(AuthProvider.google),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (DevToolsConfig.enabled) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _QuickLoginCard(
+                              label: _quickLoggingIn == 'A'
+                                  ? 'Logging in...'
+                                  : 'Login as A',
+                              isAccountA: true,
+                              loading: _quickLoggingIn == 'A',
+                              disabled:
+                                  _quickLoggingIn != null || loading != null,
+                              onTap: () => _quickLogin('A'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _QuickLoginCard(
+                              label: _quickLoggingIn == 'B'
+                                  ? 'Logging in...'
+                                  : 'Login as B',
+                              isAccountA: false,
+                              loading: _quickLoggingIn == 'B',
+                              disabled:
+                                  _quickLoggingIn != null || loading != null,
+                              onTap: () => _quickLogin('B'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+
+                // 4. LEGAL TEXT
+                SizedBox(height: legalGap),
+                const _LegalText(),
+                SizedBox(height: legalBottomGap),
+              ],
+            );
+
+            // Stationary fixed layout when content fits comfortably
+            if (box.maxHeight >= 540) {
+              return SizedBox(height: box.maxHeight, child: buildContent());
+            }
+
+            // Defensive non-bouncing scroll fallback strictly for small viewports
+            return ScrollConfiguration(
+              behavior: const ScrollBehavior().copyWith(
+                overscroll: false,
+                scrollbars: false,
+              ),
+              child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: box.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Breathing space from top SafeArea / back button level
-                        SizedBox(height: topHeroSpace),
-
-                        // 1. COMPOSED HERO REGION
-                        _wrapAnimated(
-                          opacity: _symbolOpacity,
-                          translate: _symbolTranslate,
-                          child: Center(
-                            child: Image.asset(
-                              'assets/images/gufi_hero_eye.png',
-                              width: symbolSize,
-                              height: symbolSize,
-                              cacheWidth: 372,
-                              cacheHeight: 372,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: symbolToHeadGap),
-                        _wrapAnimated(
-                          opacity: _textOpacity,
-                          translate: _textTranslate,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'Welcome to Gufi',
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                    fontFamily:
-                                        AppTypography.gambarinoFontFamily,
-                                    fontSize: headlineSize,
-                                    height: 1.05,
-                                    letterSpacing: -0.7,
-                                    color: navy,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Show up. Follow through. Together.',
-                                textAlign: TextAlign.center,
-                                style: ui(
-                                  16.5,
-                                  color: const Color(0xFF5A6A85),
-                                  height: 1.35,
-                                  spacing: -0.15,
-                                  weight: FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // 2. FLEXIBLE BREATHING SPACE BETWEEN HERO AND ACTIONS
-                        const Spacer(),
-                        SizedBox(height: veryCompact ? 16.0 : 28.0),
-
-                        // 3. ACTION GROUP
-                        _wrapAnimated(
-                          opacity: _actionOpacity,
-                          translate: _actionTranslate,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              PrimaryButton(
-                                label: 'Create an account',
-                                onPressed: _handleCreate,
-                              ),
-                              const SizedBox(height: 13),
-                              SecondaryButton(
-                                label: 'Log in',
-                                onPressed: _handleLogin,
-                              ),
-                              SizedBox(height: veryCompact ? 18.0 : 28.0),
-                              const DividerLabel(),
-                              SizedBox(height: veryCompact ? 16.0 : 22.0),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ProviderButton(
-                                      label: 'Apple',
-                                      loading: loading == AuthProvider.apple,
-                                      icon: const Icon(
-                                        Icons.apple,
-                                        size: 24,
-                                        color: navy,
-                                      ),
-                                      onPressed: () =>
-                                          provider(AuthProvider.apple),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: ProviderButton(
-                                      label: 'Google',
-                                      loading: loading == AuthProvider.google,
-                                      icon: Text(
-                                        'G',
-                                        style: ui(
-                                          21,
-                                          color: const Color(0xFF4285F4),
-                                          weight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      onPressed: () =>
-                                          provider(AuthProvider.google),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // 4. LEGAL TEXT
-                        SizedBox(height: veryCompact ? 18.0 : 30.0),
-                        const _LegalText(),
-                        SizedBox(height: veryCompact ? 4.0 : 10.0),
-                      ],
-                    ),
-                  ),
+                  child: IntrinsicHeight(child: buildContent()),
                 ),
-              );
-            },
-          ),
-          Align(
-            alignment: Alignment.topLeft,
-            child: BackControl(onPressed: widget.onBack),
-          ),
-        ],
-      ),
+              ),
+            );
+          },
+        ),
+        Align(
+          alignment: Alignment.topLeft,
+          child: BackControl(onPressed: widget.onBack),
+        ),
+      ],
     ),
   );
 }
@@ -1474,7 +1544,13 @@ class _ResetScreenState extends State<ResetScreen> {
           fields: const [],
           actions: PrimaryButton(
             label: 'Back to log in',
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              FocusManager.instance.primaryFocus?.unfocus();
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+              }
+            },
           ),
         )
       : FormScreen(
@@ -1502,31 +1578,43 @@ class Canvas extends StatelessWidget {
     this.back = false,
     this.resizeToAvoidBottomInset = false,
   });
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: bg,
-    resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-    body: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (back) ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: BackControl(
-                  onPressed: () => Navigator.of(context).pop(),
+  Widget build(BuildContext context) {
+    final bottomInset = resizeToAvoidBottomInset
+        ? MediaQuery.viewInsetsOf(context).bottom
+        : 0.0;
+    return ColoredBox(
+      color: bg,
+      child: SafeArea(
+        maintainBottomViewPadding: true,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, 18 + bottomInset),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (back) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: BackControl(
+                    onPressed: () {
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      final navigator = Navigator.of(context);
+                      if (navigator.canPop()) {
+                        navigator.pop();
+                      }
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 30),
+                const SizedBox(height: 30),
+              ],
+              Expanded(child: child),
             ],
-            Expanded(child: child),
-          ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class FormScreen extends StatelessWidget {
@@ -1902,6 +1990,7 @@ class _BackControlState extends State<BackControl> {
       },
       onTapUp: (_) {
         setState(() => _pressed = false);
+        FocusManager.instance.primaryFocus?.unfocus();
         widget.onPressed();
       },
       onTapCancel: () => setState(() => _pressed = false),
@@ -2035,3 +2124,309 @@ TextStyle ui(
 );
 void message(BuildContext context, String value) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
+
+class _QuickLoginCard extends StatefulWidget {
+  final String label;
+  final bool isAccountA;
+  final bool loading;
+  final bool disabled;
+  final VoidCallback onTap;
+
+  const _QuickLoginCard({
+    required this.label,
+    required this.isAccountA,
+    required this.loading,
+    required this.disabled,
+    required this.onTap,
+  });
+
+  @override
+  State<_QuickLoginCard> createState() => _QuickLoginCardState();
+}
+
+class _QuickLoginCardState extends State<_QuickLoginCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = widget.isAccountA
+        ? const Color(0xFFF0F5FF)
+        : const Color(0xFFEFF8F1);
+    final borderColor = widget.isAccountA
+        ? const Color(0xFFD2E3FC)
+        : const Color(0xFFCBEAD2);
+    final accentColor = widget.isAccountA
+        ? const Color(0xFF2E6FF2)
+        : const Color(0xFF229A53);
+
+    return AnimatedScale(
+      scale: _pressed && !widget.disabled ? 0.98 : 1.0,
+      duration: const Duration(milliseconds: 110),
+      curve: Curves.easeInOut,
+      child: AnimatedOpacity(
+        opacity: _pressed && !widget.disabled
+            ? 0.88
+            : (widget.disabled && !widget.loading ? 0.65 : 1.0),
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeInOut,
+        child: GestureDetector(
+          onTapDown: widget.disabled
+              ? null
+              : (_) => setState(() => _pressed = true),
+          onTapUp: widget.disabled
+              ? null
+              : (_) {
+                  setState(() => _pressed = false);
+                  widget.onTap();
+                },
+          onTapCancel: widget.disabled
+              ? null
+              : () => setState(() => _pressed = false),
+          child: Container(
+            height: 68,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(19),
+              border: Border.all(color: borderColor, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: accentColor.withValues(alpha: 0.08),
+                  offset: const Offset(0, 2),
+                  blurRadius: 6,
+                ),
+                const BoxShadow(
+                  color: Color(0x06000000),
+                  offset: Offset(0, 1),
+                  blurRadius: 2,
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                if (widget.loading)
+                  SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            accentColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  CustomPaint(
+                    size: const Size(36, 36),
+                    painter: _MascotPainter(isAccountA: widget.isAccountA),
+                  ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: ui(
+                      14.5,
+                      color: navy,
+                      weight: FontWeight.w600,
+                      spacing: -0.2,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_forward_rounded, size: 19, color: accentColor),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MascotPainter extends CustomPainter {
+  final bool isAccountA;
+
+  const _MascotPainter({required this.isAccountA});
+
+  @override
+  void paint(sky.Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2 + 2.5;
+    const headRadius = 12.0;
+
+    // 1. Lower drop shadow beneath the 3D sphere
+    final groundShadowRect = Rect.fromCenter(
+      center: Offset(cx, cy + headRadius + 1.2),
+      width: headRadius * 1.6,
+      height: 3.5,
+    );
+    final groundShadowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          (isAccountA ? const Color(0xFF1E3A8A) : const Color(0xFF065F46))
+              .withValues(alpha: 0.25),
+          Colors.transparent,
+        ],
+      ).createShader(groundShadowRect);
+    canvas.drawOval(groundShadowRect, groundShadowPaint);
+
+    // 2. Decorative accent strokes radiating above head
+    final sparkPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.7
+      ..strokeCap = StrokeCap.round;
+
+    final sparkAngles = [-130.0, -105.0, -75.0, -50.0];
+    final sparkColors = isAccountA
+        ? const [
+            Color(0xFF3B82F6),
+            Color(0xFFFBBF24),
+            Color(0xFF3B82F6),
+            Color(0xFFFBBF24),
+          ]
+        : const [
+            Color(0xFF10B981),
+            Color(0xFFFBBF24),
+            Color(0xFF10B981),
+            Color(0xFFFBBF24),
+          ];
+
+    for (int i = 0; i < sparkAngles.length; i++) {
+      final rad = sparkAngles[i] * (math.pi / 180.0);
+      const innerDist = headRadius + 3.0;
+      const outerDist = innerDist + 3.5;
+      final p1 = Offset(
+        cx + innerDist * math.cos(rad),
+        cy + innerDist * math.sin(rad),
+      );
+      final p2 = Offset(
+        cx + outerDist * math.cos(rad),
+        cy + outerDist * math.sin(rad),
+      );
+      sparkPaint.color = sparkColors[i];
+      canvas.drawLine(p1, p2, sparkPaint);
+    }
+
+    // 3. Base 3D sphere with rich multi-stop gradient
+    final headRect = Rect.fromCircle(
+      center: Offset(cx, cy),
+      radius: headRadius,
+    );
+
+    final headPaint = Paint()
+      ..shader = LinearGradient(
+        begin: const Alignment(-0.6, -0.8),
+        end: const Alignment(0.8, 0.9),
+        colors: isAccountA
+            ? const [Color(0xFF7BB4FE), Color(0xFF3B82F6), Color(0xFF1D54DA)]
+            : const [Color(0xFF6EE7A8), Color(0xFF34D399), Color(0xFF0D9465)],
+        stops: const [0.0, 0.55, 1.0],
+      ).createShader(headRect);
+
+    canvas.drawCircle(Offset(cx, cy), headRadius, headPaint);
+
+    // 4. Subtle inner depth / ambient shadow in lower right
+    canvas.save();
+    canvas.clipPath(
+      Path()
+        ..addOval(Rect.fromCircle(center: Offset(cx, cy), radius: headRadius)),
+    );
+
+    final innerDepthPaint = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(0.4, 0.5),
+        radius: 0.8,
+        colors: [
+          (isAccountA ? const Color(0xFF0C246E) : const Color(0xFF033825))
+              .withValues(alpha: 0.38),
+          Colors.transparent,
+        ],
+        stops: const [0.35, 1.0],
+      ).createShader(headRect);
+    canvas.drawRect(headRect, innerDepthPaint);
+
+    // 5. Tiny glossy specular highlight on top-left curve
+    final glossCenter = Offset(cx - 3.6, cy - 3.8);
+    final glossRect = Rect.fromCenter(
+      center: glossCenter,
+      width: 7.2,
+      height: 4.4,
+    );
+    final glossPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.white.withValues(alpha: 0.60),
+          Colors.white.withValues(alpha: 0.0),
+        ],
+      ).createShader(glossRect);
+
+    canvas.save();
+    canvas.translate(glossCenter.dx, glossCenter.dy);
+    canvas.rotate(-math.pi / 4.2);
+    canvas.translate(-glossCenter.dx, -glossCenter.dy);
+    canvas.drawOval(glossRect, glossPaint);
+    canvas.restore();
+
+    // 6. Top inner rim light
+    final rimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.white.withValues(alpha: 0.45), Colors.transparent],
+        stops: const [0.0, 0.5],
+      ).createShader(headRect);
+    canvas.drawCircle(Offset(cx, cy), headRadius - 0.5, rimPaint);
+
+    canvas.restore(); // restore clipPath
+
+    // 7. Cheerful facial expression
+    // Rosy cheeks
+    final cheekPaint = Paint()
+      ..color = const Color(0xFFFF486E).withValues(alpha: 0.30)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset(cx - 6.5, cy + 2.0), 2.2, cheekPaint);
+    canvas.drawCircle(Offset(cx + 6.5, cy + 2.0), 2.2, cheekPaint);
+
+    // Arched happy eyes
+    final eyePaint = Paint()
+      ..color = const Color(0xFF0E1E42)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.35
+      ..strokeCap = StrokeCap.round;
+
+    final leftEyePath = Path()
+      ..moveTo(cx - 5.5, cy - 0.5)
+      ..quadraticBezierTo(cx - 4.0, cy - 2.5, cx - 2.5, cy - 0.5);
+    canvas.drawPath(leftEyePath, eyePaint);
+
+    final rightEyePath = Path()
+      ..moveTo(cx + 2.5, cy - 0.5)
+      ..quadraticBezierTo(cx + 4.0, cy - 2.5, cx + 5.5, cy - 0.5);
+    canvas.drawPath(rightEyePath, eyePaint);
+
+    // Friendly smile
+    final smilePaint = Paint()
+      ..color = const Color(0xFF0E1E42)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.35
+      ..strokeCap = StrokeCap.round;
+
+    final smilePath = Path()
+      ..moveTo(cx - 2.5, cy + 2.8)
+      ..quadraticBezierTo(cx, cy + 4.8, cx + 2.5, cy + 2.8);
+    canvas.drawPath(smilePath, smilePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MascotPainter oldDelegate) =>
+      oldDelegate.isAccountA != isAccountA;
+}

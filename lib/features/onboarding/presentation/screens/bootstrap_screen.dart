@@ -55,14 +55,9 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
 
       if (!mounted) return;
 
-      // 4. Unauthenticated user
+      // 4. Unauthenticated user: ALWAYS start at Onboarding Screen 1
       if (profile == null) {
-        final hasSeenIntro = AppPreferencesService.instance.getHasSeenIntro();
-        if (hasSeenIntro) {
-          context.go('/auth');
-        } else {
-          context.go('/onboarding');
-        }
+        context.go('/onboarding');
         return;
       }
 

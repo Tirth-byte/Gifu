@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/haptics/app_haptics.dart';
-import '../../../../core/services/app_preferences_service.dart';
 import '../../../../core/theme/app_typography.dart';
 
 /// Screen 02 of the Gufi Onboarding Flow.
@@ -144,7 +143,6 @@ class _OnboardingScreen2State extends State<OnboardingScreen2>
     if (_isNavigating) return;
     _isNavigating = true;
     AppHaptics.medium();
-    AppPreferencesService.instance.setHasSeenIntro(true);
     context.push('/auth').then((_) {
       if (mounted) _isNavigating = false;
     });
