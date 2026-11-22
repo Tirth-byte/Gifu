@@ -54,3 +54,8 @@ supabase/.temp/
 # Developer secrets and credentials
 dev.secrets.json
 *.secrets.json
+
+# CodeGraph local indexes and caches
+.codegraph/
+*.codegraph/
+graph.db

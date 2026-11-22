@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": "Gufi",
+  "description": "Compact structural index of the Gufi Flutter codebase",
+  "version": "1.0.0",
+  "entrypoint": "lib/main.dart",
+  "app_root": "lib/app/app.dart",
+  "router": "lib/app/router.dart",
+  "features": {
+    "auth": {
+      "name": "Authentication & Onboarding",
+      "root": "lib/features/auth",
+      "presentation": [
+        "lib/features/auth/presentation/auth_page.dart",
+        "lib/features/auth/presentation/screens/email_verification_screen.dart",
+        "lib/features/onboarding/presentation/onboarding_page.dart",
+        "lib/features/onboarding/presentation/screens/bootstrap_screen.dart",
+        "lib/features/onboarding/presentation/screens/onboarding_screen_2.dart",
+        "lib/features/onboarding/presentation/components/circular_arrow_button.dart"
+      ],
+      "domain": [
+        "lib/features/auth/domain/models/user_profile.dart",
+        "lib/features/auth/domain/repositories/auth_repository.dart"
+      ],
+      "data": [
+        "lib/features/auth/data/repositories/supabase_auth_repository.dart"
+      ],
+      "providers": [
+        "lib/features/auth/presentation/providers/auth_providers.dart"
+      ],
+      "tests": [
+        "test/onboarding/cold_launch_flow_test.dart",
+        "test/onboarding/startup_state_machine_test.dart",
+        "test/widgets/quick_login_test.dart",
+        "test/widgets/auth_back_transition_test.dart",
+        "test/widgets/user_avatar_test.dart",
+        "test/e2e_real_auth_admin_test.dart"
+      ]
+    },
+    "circles": {
+      "name": "Circles (Accountability Groups)",
+      "root": "lib/features/circles",
+      "presentation": [
+        "lib/features/circles/presentation/circle_entry_page.dart",
+        "lib/features/circles/presentation/circle_create_page.dart",
+        "lib/features/circles/presentation/circle_create_placeholder_page.dart",
+        "lib/features/circles/presentation/circle_join_page.dart",
+        "lib/features/circles/presentation/circle_join_placeholder_page.dart",
+        "lib/features/circles/presentation/circle_invite_page.dart"
+      ],
+      "domain": [
+        "lib/features/circles/domain/models/circle.dart",
+        "lib/features/circles/domain/models/circle_member.dart",
+        "lib/features/circles/domain/models/circle_invite.dart",
+        "lib/features/circles/domain/repositories/circle_repository.dart"
+      ],
+      "data": [
+        "lib/features/circles/data/repositories/supabase_circle_repository.dart"
+      ],
+      "providers": [
+        "lib/features/circles/presentation/providers/circle_providers.dart"
+      ],
+      "tests": [
+        "test/circles/circle_entry_routing_test.dart",
+        "test/circles/circle_create_page_test.dart",
+        "test/circles/circle_creation_idempotency_test.dart",
+        "test/circles/circle_join_page_test.dart",
+        "test/circles/circle_invite_page_test.dart"
+      ]
+    },
+    "commitments": {
+      "name": "Commitments, Proofs, Reviews & Momentum",
+      "root": "lib/features/commitments",
+      "domain": [
+        "lib/features/commitments/domain/models/commitment.dart",
+        "lib/features/commitments/domain/models/commitment_status.dart",
+        "lib/features/commitments/domain/models/accountability_scope.dart",
+        "lib/features/commitments/domain/models/proof.dart",
+        "lib/features/commitments/domain/models/proof_type.dart",
+        "lib/features/commitments/domain/models/review.dart",
+        "lib/features/commitments/domain/models/daily_result.dart",
+        "lib/features/commitments/domain/models/momentum_result.dart",
+        "lib/features/commitments/domain/models/commitment_event.dart",
+        "lib/features/commitments/domain/utils/gufi_day_utils.dart",
+        "lib/features/commitments/domain/repositories/commitment_repository.dart",
+        "lib/features/commitments/domain/repositories/proof_repository.dart",
+        "lib/features/commitments/domain/repositories/review_repository.dart",
+        "lib/features/commitments/domain/repositories/momentum_repository.dart"
+      ],
+      "data": [
+        "lib/features/commitments/data/repositories/supabase_commitment_repository.dart",
+        "lib/features/commitments/data/repositories/supabase_proof_repository.dart",
+        "lib/features/commitments/data/repositories/supabase_review_repository.dart",
+        "lib/features/commitments/data/repositories/supabase_momentum_repository.dart"
+      ],
+      "providers": [
+        "lib/features/commitments/presentation/providers/commitment_providers.dart"
+      ],
+      "tests": [
+        "test/domain/commitment_lifecycle_test.dart",
+        "test/domain/commitment_limits_test.dart",
+        "test/domain/gufi_day_test.dart",
+        "test/domain/momentum_test.dart",
+        "test/domain/review_security_test.dart",
+        "test/domain/late_review_and_correction_test.dart",
+        "test/domain/core_loop_e2e_test.dart"
+      ]
+    },
+    "today": {
+      "name": "Today Dashboard & Core Loop",
+      "root": "lib/features/today",
+      "presentation": [
+        "lib/features/today/presentation/today_page.dart",
+        "lib/features/today/presentation/components/today_top_bar.dart",
+        "lib/features/today/presentation/components/today_hero_card.dart",
+        "lib/features/today/presentation/components/today_commitment_card.dart",
+        "lib/features/today/presentation/components/friend_review_card.dart",
+        "lib/features/today/presentation/components/make_promise_sheet.dart",
+        "lib/features/today/presentation/components/completion_proof_sheet.dart",
+        "lib/features/today/presentation/components/review_proof_sheet.dart",
+        "lib/features/today/presentation/components/today_bottom_nav.dart"
+      ],
+      "controllers": [
+        "lib/features/today/presentation/controllers/today_controller.dart",
+        "lib/features/today/presentation/controllers/today_state.dart"
+      ],
+      "domain": [
+        "lib/features/today/domain/models/review_request_item.dart"
+      ],
+      "tests": [
+        "test/today/today_screen_test.dart",
+        "test/today/today_deterministic_copy_test.dart",
+        "test/two_account_acceptance_test.dart"
+      ]
+    },
+    "admin": {
+      "name": "Admin Dashboard & DB Grid",
+      "root": "lib/features/admin",
+      "presentation": [
+        "lib/features/admin/presentation/admin_dashboard_page.dart",
+        "lib/features/admin/presentation/admin_database_grid_page.dart",
+        "lib/features/admin/presentation/widgets/admin_user_detail_sheet.dart"
+      ],
+      "domain": [
+        "lib/features/admin/domain/models/admin_user_summary.dart",
+        "lib/features/admin/domain/models/admin_audit_log.dart"
+      ],
+      "data": [
+        "lib/features/admin/data/repositories/supabase_admin_repository.dart"
+      ],
+      "providers": [
+        "lib/features/admin/presentation/providers/admin_providers.dart"
+      ],
+      "tests": [
+        "test/admin_database_grid_test.dart",
+        "test/e2e_real_auth_admin_test.dart"
+      ]
+    }
+  },
+  "routes": {
+    "/": { "screen": "OnboardingPage", "guard": "unauthenticated cold launch" },
+    "/bootstrap": { "screen": "BootstrapScreen", "guard": "state bootstrap recovery" },
+    "/onboarding": { "screen": "OnboardingPage", "guard": "explicit onboarding access" },
+    "/auth": { "screen": "AuthPage", "guard": "profile incomplete or onboarding exit" },
+    "/circle-entry": { "screen": "CircleEntryPage", "guard": "profile complete + no circles" },
+    "/circle-create": { "screen": "CircleCreatePage", "guard": "user creating circle" },
+    "/circle-join": { "screen": "CircleJoinPage", "guard": "user joining circle with code/qr" },
+    "/circle-invite/:id": { "screen": "CircleInvitePage", "guard": "creator waiting for 2nd member" },
+    "/today": { "screen": "TodayPage", "guard": "profile complete + circle with >= 2 members" },
+    "/admin": { "screen": "AdminDashboardPage", "guard": "user has admin role" },
+    "/admin/database": { "screen": "AdminDatabaseGridPage", "guard": "admin table inspection" }
+  },
+  "core": {
+    "entry": ["lib/main.dart", "lib/app/app.dart", "lib/app/router.dart"],
+    "config": ["lib/core/config/supabase_config.dart", "lib/core/config/app_config.dart"],
+    "services": [
+      "lib/core/services/app_preferences_service.dart",
+      "lib/core/services/gufi_backend_store.dart",
+      "lib/core/services/disposable_email_service.dart",
+      "lib/core/services/csv_export_service.dart"
+    ],
+    "theme": [
+      "lib/core/theme/app_colors.dart",
+      "lib/core/theme/gufi_colors.dart",
+      "lib/core/theme/app_typography.dart",
+      "lib/core/theme/app_theme.dart"
+    ],
+    "widgets": [
+      "lib/core/widgets/user_avatar.dart",
+      "lib/core/widgets/account_action_button.dart"
+    ],
+    "utils": [
+      "lib/core/utils/uuid_util.dart",
+      "lib/core/haptics/app_haptics.dart"
+    ],
+    "general_tests": [
+      "test/services_test.dart",
+      "test/widget_test.dart"
+    ]
+  }
+}
